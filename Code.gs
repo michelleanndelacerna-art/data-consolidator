@@ -26,6 +26,55 @@ const CONFIG = {
   }
 };
 
+const HARDCODED_MAPPING = {
+  "2 Consolidated_Employee Database_v3": {
+    "DATABASE": {
+      headerRow: 6,
+      columns: {
+        "Employee ID": 2, "Full Name": 3, "Last Name": 4, "First Name": 5, "Middle Name": 7, "Suffix": 6,
+        "Nickname": 15, "Gender": 16, "Date of Birth": 18, "Civil Status": 20, "Active": 8,
+        "Employment Type": 58, "Company Name": 115, "Division": 45, "Group": 116, "Department": 42,
+        "Section": 46, "Work Location": 41, "Position": 47, "Job Group": 52, "Superior ID": 56,
+        "Superior Name": 57, "Date Hired": 59, "Date Regular": 60, "Date Resigned": 63,
+        "Reason for Leaving": 70
+      }
+    }
+  },
+  "Masterlist": {
+    "as of june 2025": {
+      headerRow: 2,
+      columns: {
+        "Employee ID": 2, "Full Name": 3, "Last Name": 4, "First Name": 5, "Middle Name": 7, "Suffix": 6,
+        "Nickname": 9, "Gender": 10, "Date of Birth": 11, "Civil Status": 12, "Active": 8,
+        "Employment Type": 23, "Company Name": 14, "Division": 15, "Group": 16, "Department": 17,
+        "Section": 18, "Work Location": 13, "Position": 19, "Job Group": 20, "Superior ID": 21,
+        "Superior Name": 22, "Date Hired": 24, "Date Regular": 25, "Date Resigned": 26,
+        "Reason for Leaving": 27
+      }
+    }
+  },
+  "Personal Information": {
+    "Personal Information": {
+      headerRow: 1,
+      columns: {
+        "Last Name": 3, "First Name": 4, "Middle Name": 6, "Suffix": 5,
+        "Civil Status": 16, "Date of Birth": 10, "Nickname": 8, "Gender": 9
+      }
+    },
+    "HR FIELDS": {
+      headerRow: 1,
+      columns: {
+        "Active": 15, "Employee ID": 1, "Employment Type": 14,
+        "Company Name": 2, "Division": 3, "Group": 4, "Department": 5,
+        "Section": 6, "Work Location": 7, "Position": 34,
+        "Superior ID": 20, "Superior Name": 21, "Date Hired": 22,
+        "Date Resigned": 16, "Reason for Leaving": 18
+      }
+    }
+  }
+};
+
+
 /**
  * ==========================================
  * 2. WEB APP SERVING
@@ -96,7 +145,7 @@ function getDefaults() {
     "Date of Birth": ["date of birth", "birth", "dob"],
     "Civil Status":  ["civil status", "marital status"],
     "Active":        ["active", "status", "employee status"],
-    "Employment Type": ["employment type", "emp type"],
+    "Employment Type": ["employment type", "emp type", "contract type"],
     "Company Name":  ["company name", "company"],
     "Division":      ["division", "division name", "div"],
     "Group":         ["group", "group name", "grp"], 
@@ -105,12 +154,12 @@ function getDefaults() {
     "Work Location": ["work location", "base code", "location", "site"],
     "Position":      ["position", "position title", "job title"],
     "Job Group":     ["job group", "job level"],
-    "Superior ID":   ["immediate superior code", "superior id", "manager id"],
+    "Superior ID":   ["immediate superior code", "superior id", "manager id", "immediate superior employee number"],
     "Superior Name": ["immediate superior name", "superior name", "manager name"],
     "Date Hired":    ["date hired", "hiring date"],
     "Date Regular":  ["date regular"],
-    "Date Resigned": ["date resigned", "separation date"],
-    "Reason for Leaving": ["reason for leaving", "reason"]
+    "Date Resigned": ["date resigned", "separation date", "date of separation"],
+    "Reason for Leaving": ["reason for leaving", "reason", "reason for resignation"]
   };
 }
 
@@ -129,9 +178,76 @@ function convertArrayToConfig(rows) {
  * 4. FETCH & CONSOLIDATE DATA
  * ==========================================
  */
-function getConsolidatedData() {
+function getConsolidatedData(filters = {}) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "consolidated_data";
+  const cachedValue = cache.get(cacheKey);
+
+  if (cachedValue) {
+    console.log("Serving from cache...");
+    let jsonString;
+    try {
+      // Check if data is compressed
+      if (cachedValue.startsWith("COMPRESSED:")) {
+        const base64String = cachedValue.substring("COMPRESSED:".length);
+        const bytes = Utilities.base64Decode(base64String);
+        const blob = Utilities.newBlob(bytes, 'application/zip');
+        jsonString = Utilities.unzip(blob)[0].getDataAsString();
+      } else {
+        jsonString = cachedValue; // Backwards compatibility
+      }
+      const allData = JSON.parse(jsonString);
+      return filterData(allData, filters);
+    } catch (e) {
+      console.error("Error reading from cache, fetching fresh data. Error: " + e.toString());
+      // If cache is corrupted or in a bad state, proceed to fetch fresh data.
+    }
+  }
+
+  console.log("Fetching fresh data...");
   const columnMapping = getColumnConfig();
   const fields = Object.keys(columnMapping);
+
+  // Get all records from the Master DB to check for saved status and get master data
+  const masterId = cleanId(CONFIG.MASTER.ID);
+  const savedRecords = new Map();
+  if (masterId) {
+    try {
+      const masterSheet = SpreadsheetApp.openById(masterId).getSheetByName(CONFIG.MASTER.TAB_NAME);
+      if (masterSheet && masterSheet.getLastRow() > 1) {
+        const masterData = masterSheet.getDataRange().getValues();
+        const masterHeaders = masterData[0].map(h => String(h).trim()); // Trim headers to be safe
+        const idColIndex = masterHeaders.indexOf("Employee ID");
+
+        if (idColIndex !== -1) {
+          // Create a map from the master header name to its column index for efficient lookup
+          const masterHeaderMap = {};
+          masterHeaders.forEach((h, i) => {
+              masterHeaderMap[h] = i;
+          });
+
+          for (let i = 1; i < masterData.length; i++) {
+            const row = masterData[i];
+            const id = String(row[idColIndex]);
+            if (id) {
+              const record = {};
+              // Iterate over the app's standard fields (e.g., "Full Name", "Position")
+              fields.forEach(field => {
+                // Find the column index for that standard field in the Master Sheet
+                const idx = masterHeaderMap[field];
+                let val = (idx !== undefined) ? row[idx] : "";
+                 if (val instanceof Date) {
+                  val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+                }
+                record[field] = val;
+              });
+              savedRecords.set(id, record);
+            }
+          }
+        }
+      }
+    } catch (e) { console.error("Could not read master records: " + e.message); }
+  }
   
   const fileSources = [
     { id: cleanId(CONFIG.SHEET_1.ID), tabs: CONFIG.SHEET_1.TABS },
@@ -160,59 +276,66 @@ function getConsolidatedData() {
         if (!sheet) return;
 
         const allValues = sheet.getDataRange().getValues();
-        if (allValues.length < 2) return;
+        const mapping = HARDCODED_MAPPING[fileName]?.[tabName];
 
-        const { headerRowIndex, headers } = findHeaderRow(allValues);
-        if (headerRowIndex === -1) return;
+        if (!mapping || allValues.length < mapping.headerRow) return;
 
-        // --- DEBUGGING: CHECK MAPPING ---
-        console.log(`Scanning ${fileName} - ${tabName}`);
-        const columnIndices = mapHeadersDynamically(headers, columnMapping);
-        // --------------------------------
+        const columnIndices = mapping.columns;
+        const headerRowIndex = mapping.headerRow - 1;
 
         for (let i = headerRowIndex + 1; i < allValues.length; i++) {
           const row = allValues[i];
           if (row.every(cell => cell === "")) continue;
 
-          let nameIdx = columnIndices["Full Name"] !== undefined ? columnIndices["Full Name"] : columnIndices["Employee Name"];
-          const idIdx = columnIndices["Employee ID"];
+          const idCol = columnIndices["Employee ID"];
+          // If Employee ID isn't in this tab's mapping, we can't process the row.
+          if (idCol === undefined) continue;
 
-          if (idIdx === undefined) continue;
-
-          let rawName = (nameIdx !== undefined) ? row[nameIdx] : "";
-          if (!rawName && columnIndices["Last Name"] !== undefined && columnIndices["First Name"] !== undefined) {
-             const last = row[columnIndices["Last Name"]];
-             const first = row[columnIndices["First Name"]];
-             if (last || first) rawName = `${last}, ${first}`;
-          }
-
-          const rawID = row[idIdx];
+          const rawID = row[idCol];
           const cleanIdVal = normalizeEmployeeID(rawID);
-          if(!cleanIdVal) continue; 
+          if(!cleanIdVal) continue;
 
-          const compositeKey = cleanIdVal; 
+          const compositeKey = cleanIdVal;
+
+          let rawName = "";
+          if (columnIndices["Full Name"] !== undefined) {
+             rawName = row[columnIndices["Full Name"]];
+          } else {
+            const last = row[columnIndices["Last Name"]] || "";
+            const first = row[columnIndices["First Name"]] || "";
+            const middle = row[columnIndices["Middle Name"]] || "";
+            const suffix = row[columnIndices["Suffix"]] || "";
+            let parts = [last, first, middle].filter(Boolean);
+            if (parts.length > 0) rawName = parts.join(", ");
+            if (suffix) rawName += `, ${suffix}`;
+          }
 
           if (!groupedData[compositeKey]) {
             groupedData[compositeKey] = {
               key: compositeKey,
               normalizedId: cleanIdVal,
-              normalizedName: normalizeText(rawName), 
+              normalizedName: normalizeText(rawName),
+              isSaved: savedRecords.has(cleanIdVal),
+              masterRecord: savedRecords.get(cleanIdVal) || null,
               sources: {}
             };
           }
 
-          let sourceRecord = {};
-          fields.forEach(field => {
-            const idx = columnIndices[field];
-            let val = (idx !== undefined) ? row[idx] : "";
-            if (val instanceof Date) {
-              val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
-            }
-            sourceRecord[field] = val;
-          });
+          if (!groupedData[compositeKey].sources[fileName]) {
+            groupedData[compositeKey].sources[fileName] = {};
+          }
 
-          // Save under REAL FILE NAME
-          groupedData[compositeKey].sources[fileName] = sourceRecord;
+          const sourceRecord = groupedData[compositeKey].sources[fileName];
+          fields.forEach(field => {
+            const colIdx = columnIndices[field];
+            if (colIdx !== undefined && !sourceRecord[field]) {
+              let val = row[colIdx];
+              if (val instanceof Date) {
+                val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+              }
+              sourceRecord[field] = val;
+            }
+          });
         }
       });
 
@@ -221,11 +344,81 @@ function getConsolidatedData() {
     }
   });
 
-  return {
+  let finalData = Object.values(groupedData);
+
+  const fullDataObject = {
     headers: fields,
-    sourceNames: detectedSourceNames, // Send names to frontend
+    sourceNames: detectedSourceNames,
     data: Object.values(groupedData)
   };
+
+  try {
+    const jsonString = JSON.stringify(fullDataObject);
+    const blob = Utilities.newBlob(jsonString, 'text/plain', 'data.json');
+    const zippedBlob = Utilities.zip([blob]);
+    const base64String = Utilities.base64Encode(zippedBlob.getBytes());
+
+    // Prefix to identify compressed content later
+    cache.put(cacheKey, "COMPRESSED:" + base64String, 3600);
+    console.log("Data cached successfully (compressed).");
+
+  } catch(e) {
+    console.error("Could not cache data: " + e.toString());
+    // If caching fails, just return the data without caching
+  }
+
+  return filterData(fullDataObject, filters);
+}
+
+function filterData(allData, filters) {
+  let finalData = allData.data;
+  const filterKeys = Object.keys(filters).filter(key => filters[key]);
+
+  if (filterKeys.length > 0) {
+    finalData = finalData.filter(employee => {
+      return filterKeys.every(key => {
+        return Object.values(employee.sources).some(source => source[key] === filters[key]);
+      });
+    });
+  }
+
+  return {
+    headers: allData.headers,
+    sourceNames: allData.sourceNames,
+    data: finalData
+  };
+}
+
+
+function getSingleEmployee(employeeId) {
+  // This is a simplified version; in a real app, you might want to optimize this
+  // to avoid re-scanning all sheets just for one employee.
+  const allData = getConsolidatedData().data;
+  const employee = allData.find(e => e.normalizedId === employeeId);
+  return employee;
+}
+
+function getFilterOptions() {
+  const fieldsToFilter = ["Work Location", "Division", "Group", "Department", "Section"];
+  const options = {};
+
+  // This is not the most performant way for large datasets, but it's simple.
+  // A better way would be to cache these values.
+  const allData = getConsolidatedData().data;
+
+  fieldsToFilter.forEach(field => {
+    const values = new Set();
+    allData.forEach(employee => {
+      Object.values(employee.sources).forEach(source => {
+        if (source[field]) {
+          values.add(source[field]);
+        }
+      });
+    });
+    options[field] = Array.from(values).sort();
+  });
+
+  return options;
 }
 
 /**
@@ -272,9 +465,11 @@ function saveToMaster(record) {
         sheet.insertColumnsAfter(sheet.getMaxColumns(), rowData.length - sheet.getMaxColumns());
       }
       sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
+      CacheService.getScriptCache().remove("consolidated_data"); // Invalidate cache
       return { success: true, message: "Record Updated in Master" };
     } else {
       sheet.appendRow(rowData);
+      CacheService.getScriptCache().remove("consolidated_data"); // Invalidate cache
       return { success: true, message: "Record Added to Master" };
     }
 
@@ -288,42 +483,11 @@ function saveToMaster(record) {
  * 6. HELPER FUNCTIONS
  * ==========================================
  */
-function findHeaderRow(allValues) {
-  const limit = Math.min(allValues.length, 10);
-  for (let i = 0; i < limit; i++) {
-    const rowStr = allValues[i].join(" ").toLowerCase();
-    // Look for ID OR Name OR Company as indicators of a header row
-    if ((rowStr.includes("id") || rowStr.includes("no.")) && (rowStr.includes("name") || rowStr.includes("company") || rowStr.includes("division"))) {
-      return { headerRowIndex: i, headers: allValues[i] };
-    }
-  }
-  return { headerRowIndex: 0, headers: allValues[0] };
-}
-
 function cleanId(idOrUrl) {
   if (!idOrUrl || idOrUrl.includes("REPLACE")) return null;
   const match = idOrUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
   if (match && match[1]) return match[1];
   return idOrUrl;
-}
-
-function mapHeadersDynamically(sourceHeaders, config) {
-  const map = {};
-  const normalizedHeaders = sourceHeaders.map(h => String(h).toLowerCase().replace(/[^a-z0-9]/g, ''));
-
-  Object.keys(config).forEach(masterField => {
-    const keywords = config[masterField];
-    const foundIndex = normalizedHeaders.findIndex(h => {
-      return keywords.some(k => h.includes(k.toLowerCase()));
-    });
-    if (foundIndex !== -1) {
-      map[masterField] = foundIndex;
-    } else {
-      // LOGGING: Only enable this if debugging
-      // console.log(`Warning: Could not map ${masterField}`);
-    }
-  });
-  return map;
 }
 
 function normalizeEmployeeID(rawId) {
