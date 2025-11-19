@@ -455,14 +455,43 @@ function saveToMaster(record) {
     }
 
     const rowData = fields.map(f => record[f] || "");
+    let message = "";
 
     if (rowIndex > 0) {
       sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
-      return { success: true, message: "Record Updated" };
+      message = "Record Updated";
     } else {
       sheet.appendRow(rowData);
-      return { success: true, message: "Record Added" };
+      message = "Record Added";
     }
+
+    // --- CLEAR CACHE ON SUCCESSFUL SAVE ---
+    console.log("Record saved. Clearing cache...");
+    const cache = CacheService.getScriptCache();
+    const cacheKeyMeta = 'consolidated_data_v4_meta';
+    const cacheKeyChunkPrefix = 'consolidated_data_v4_chunk_';
+    const filterCacheKey = 'filter_options_v2';
+
+    const metaCached = cache.get(cacheKeyMeta);
+    if (metaCached) {
+        try {
+            const meta = JSON.parse(metaCached);
+            const keysToRemove = [cacheKeyMeta];
+            for (let i = 0; i < meta.chunkCount; i++) {
+                keysToRemove.push(cacheKeyChunkPrefix + i);
+            }
+            cache.removeAll(keysToRemove);
+            console.log(`Removed ${keysToRemove.length} data cache keys.`);
+        } catch (e) {
+            console.error("Cache clear error, removing meta key only.", e);
+            cache.remove(cacheKeyMeta);
+        }
+    }
+    cache.remove(filterCacheKey);
+    console.log("Removed filter options cache.");
+    // ------------------------------------
+
+    return { success: true, message: message };
   } catch (e) {
     return { success: false, message: e.toString() };
   }
