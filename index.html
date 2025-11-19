@@ -36,6 +36,10 @@
               onkeyup="filterList()">
           </div>
         </div>
+
+        <div id="filterContainer" class="p-4 border-b space-y-3">
+          <!-- Filters will be populated here by the script -->
+        </div>
         
         <div id="loadingState" class="flex flex-col items-center justify-center h-64 hidden">
           <div class="loader mb-4"></div>
@@ -87,8 +91,12 @@
       let sourceNames = []; // Holds ["File A", "File B", "File C"]
       let currentRecord = null;
       let finalMergeState = {};
+      let currentFilters = {};
 
-      window.onload = loadData;
+      window.onload = () => {
+        loadData();
+        loadFilters();
+      };
 
       function loadData() {
         document.getElementById('loadingState').classList.remove('hidden');
@@ -97,7 +105,7 @@
         google.script.run
           .withSuccessHandler(onDataLoaded)
           .withFailureHandler(showError)
-          .getConsolidatedData();
+          .getConsolidatedData(currentFilters);
       }
 
       function onDataLoaded(response) {
@@ -107,6 +115,33 @@
         
         document.getElementById('loadingState').classList.add('hidden');
         renderList(allData);
+      }
+
+      function loadFilters() {
+        google.script.run
+          .withSuccessHandler(options => {
+            const container = document.getElementById('filterContainer');
+            container.innerHTML = ''; // Clear previous filters
+            for (const [field, values] of Object.entries(options)) {
+              if (values.length > 0) {
+                let selectHtml = `
+                  <div class="relative">
+                    <select onchange="applyFilter('${field}', this.value)" class="w-full text-xs p-2 border rounded bg-white appearance-none">
+                      <option value="">All ${field}s</option>
+                      ${values.map(v => `<option value="${v}">${v}</option>`).join('')}
+                    </select>
+                    <i class="ph ph-caret-down absolute right-2 top-2.5 text-gray-400"></i>
+                  </div>`;
+                container.innerHTML += selectHtml;
+              }
+            }
+          })
+          .getFilterOptions();
+      }
+
+      function applyFilter(field, value) {
+        currentFilters[field] = value;
+        loadData(); // Reload data with the new filter
       }
 
       function showError(err) {
@@ -134,7 +169,7 @@
           card.innerHTML = `
             <div class="flex justify-between items-start">
               <div>
-                <h3 class="font-semibold text-gray-800">${item.normalizedName}</h3>
+                <h3 class="font-semibold text-gray-800">${item.normalizedName} ${item.isSaved ? '<span class="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full font-medium">✓ Saved</span>' : ''}</h3>
                 <p class="text-xs text-gray-500 font-mono">${item.normalizedId}</p>
               </div>
               <div class="flex gap-1">
@@ -212,6 +247,7 @@
 
           const row = document.createElement('tr');
           row.className = 'border-b';
+
           
           let cellsHtml = `<td class="p-4 font-medium text-gray-600 border-r sticky left-0 z-10 ${isIdentical ? 'bg-white' : 'bg-orange-50'}">${field}</td>`;
 
@@ -259,6 +295,11 @@
       }
 
       function selectValue(field, value) {
+        if (currentRecord.isSaved) {
+          if (!confirm("This record is already saved. Are you sure you want to make changes?")) {
+            return;
+          }
+        }
         finalMergeState[field] = value;
         document.getElementById(`final-${field}`).value = value;
         
@@ -269,6 +310,13 @@
       }
 
       function updateFinal(field, value) {
+        if (currentRecord.isSaved) {
+          if (!confirm("This record is already saved. Are you sure you want to make changes?")) {
+            // Revert the input if the user cancels
+            document.getElementById(`final-${field}`).value = finalMergeState[field];
+            return;
+          }
+        }
         finalMergeState[field] = value;
       }
 
@@ -282,14 +330,26 @@
           .withSuccessHandler(res => {
             if(res.success) {
               showToast(res.message);
-              loadData();
-              document.getElementById('emptyState').classList.remove('hidden');
-              document.getElementById('mergeInterface').classList.add('hidden');
+              // Instead of a full reload, just refresh the current user's data
+              google.script.run
+                .withSuccessHandler(updatedEmployee => {
+                    // Update the record in the main list
+                    const index = allData.findIndex(e => e.normalizedId === updatedEmployee.normalizedId);
+                    if (index !== -1) allData[index] = updatedEmployee;
+
+                    renderList(allData); // Re-render the list to show the 'Saved' badge
+                    selectEmployee(updatedEmployee, false); // Re-select the employee to refresh the view
+
+                    btn.disabled = false;
+                    btn.innerHTML = origText;
+                })
+                .getSingleEmployee(finalMergeState["Employee ID"]);
+
             } else {
               alert("Error: " + res.message);
+              btn.disabled = false;
+              btn.innerHTML = origText;
             }
-            btn.disabled = false;
-            btn.innerHTML = origText;
           })
           .saveToMaster(finalMergeState);
       }
