@@ -129,9 +129,23 @@ function convertArrayToConfig(rows) {
  * 4. FETCH & CONSOLIDATE DATA
  * ==========================================
  */
-function getConsolidatedData() {
+function getConsolidatedData(filters = {}) {
   const columnMapping = getColumnConfig();
   const fields = Object.keys(columnMapping);
+
+  // Get a list of all IDs already in the Master DB
+  const masterId = cleanId(CONFIG.MASTER.ID);
+  const savedIds = new Set();
+  if (masterId) {
+    try {
+      const masterSheet = SpreadsheetApp.openById(masterId).getSheetByName(CONFIG.MASTER.TAB_NAME);
+      if (masterSheet) {
+        const idColIndex = getDefaults().hasOwnProperty("Employee ID") ? Object.keys(getDefaults()).indexOf("Employee ID") : 0;
+        masterSheet.getRange(2, idColIndex + 1, masterSheet.getLastRow(), 1).getValues()
+          .forEach(row => savedIds.add(String(row[0])));
+      }
+    } catch (e) { console.error("Could not read master IDs: " + e.message); }
+  }
   
   const fileSources = [
     { id: cleanId(CONFIG.SHEET_1.ID), tabs: CONFIG.SHEET_1.TABS },
@@ -197,6 +211,7 @@ function getConsolidatedData() {
               key: compositeKey,
               normalizedId: cleanIdVal,
               normalizedName: normalizeText(rawName), 
+              isSaved: savedIds.has(cleanIdVal), // <-- ADDED FLAG
               sources: {}
             };
           }
@@ -221,11 +236,55 @@ function getConsolidatedData() {
     }
   });
 
+  let finalData = Object.values(groupedData);
+
+  // Apply filters if any
+  const filterKeys = Object.keys(filters).filter(key => filters[key]);
+  if (filterKeys.length > 0) {
+    finalData = finalData.filter(employee => {
+      return filterKeys.every(key => {
+        // Check if any source for the employee matches the filter value
+        return Object.values(employee.sources).some(source => source[key] === filters[key]);
+      });
+    });
+  }
+
   return {
     headers: fields,
     sourceNames: detectedSourceNames, // Send names to frontend
-    data: Object.values(groupedData)
+    data: finalData
   };
+}
+
+function getSingleEmployee(employeeId) {
+  // This is a simplified version; in a real app, you might want to optimize this
+  // to avoid re-scanning all sheets just for one employee.
+  const allData = getConsolidatedData().data;
+  const employee = allData.find(e => e.normalizedId === employeeId);
+  return employee;
+}
+
+function getFilterOptions() {
+  const fieldsToFilter = ["Work Location", "Division", "Group", "Department", "Section"];
+  const options = {};
+
+  // This is not the most performant way for large datasets, but it's simple.
+  // A better way would be to cache these values.
+  const allData = getConsolidatedData().data;
+
+  fieldsToFilter.forEach(field => {
+    const values = new Set();
+    allData.forEach(employee => {
+      Object.values(employee.sources).forEach(source => {
+        if (source[field]) {
+          values.add(source[field]);
+        }
+      });
+    });
+    options[field] = Array.from(values).sort();
+  });
+
+  return options;
 }
 
 /**
