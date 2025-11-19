@@ -129,9 +129,72 @@ function convertArrayToConfig(rows) {
  * 4. FETCH & CONSOLIDATE DATA
  * ==========================================
  */
-function getConsolidatedData() {
+function getConsolidatedData(filters = {}) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "consolidated_data";
+  const cachedValue = cache.get(cacheKey);
+
+  if (cachedValue) {
+    console.log("Serving from cache...");
+    let jsonString;
+    try {
+      // Check if data is compressed
+      if (cachedValue.startsWith("COMPRESSED:")) {
+        const base64String = cachedValue.substring("COMPRESSED:".length);
+        const bytes = Utilities.base64Decode(base64String);
+        const blob = Utilities.newBlob(bytes, 'application/zip');
+        jsonString = Utilities.unzip(blob)[0].getDataAsString();
+      } else {
+        jsonString = cachedValue; // Backwards compatibility
+      }
+      const allData = JSON.parse(jsonString);
+      return filterData(allData, filters);
+    } catch (e) {
+      console.error("Error reading from cache, fetching fresh data. Error: " + e.toString());
+      // If cache is corrupted or in a bad state, proceed to fetch fresh data.
+    }
+  }
+
+  console.log("Fetching fresh data...");
   const columnMapping = getColumnConfig();
   const fields = Object.keys(columnMapping);
+
+  // Get all records from the Master DB to check for saved status and get master data
+  const masterId = cleanId(CONFIG.MASTER.ID);
+  const savedRecords = new Map();
+  if (masterId) {
+    try {
+      const masterSheet = SpreadsheetApp.openById(masterId).getSheetByName(CONFIG.MASTER.TAB_NAME);
+      if (masterSheet && masterSheet.getLastRow() > 1) {
+        const masterData = masterSheet.getDataRange().getValues();
+        const masterHeaders = masterData[0];
+
+        // Use the existing dynamic mapping logic to robustly find columns
+        const columnIndices = mapHeadersDynamically(masterHeaders, columnMapping);
+        const idColIndex = columnIndices["Employee ID"];
+
+        if (idColIndex !== undefined) {
+          for (let i = 1; i < masterData.length; i++) {
+            const row = masterData[i];
+            const id = String(row[idColIndex]);
+            if (id) {
+              const record = {};
+              // Iterate over the app's standard fields, not the sheet's headers
+              fields.forEach(field => {
+                const idx = columnIndices[field];
+                let val = (idx !== undefined) ? row[idx] : "";
+                 if (val instanceof Date) {
+                  val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+                }
+                record[field] = val;
+              });
+              savedRecords.set(id, record);
+            }
+          }
+        }
+      }
+    } catch (e) { console.error("Could not read master records: " + e.message); }
+  }
   
   const fileSources = [
     { id: cleanId(CONFIG.SHEET_1.ID), tabs: CONFIG.SHEET_1.TABS },
@@ -197,6 +260,8 @@ function getConsolidatedData() {
               key: compositeKey,
               normalizedId: cleanIdVal,
               normalizedName: normalizeText(rawName), 
+              isSaved: savedRecords.has(cleanIdVal),
+              masterRecord: savedRecords.get(cleanIdVal) || null, // Attach master record
               sources: {}
             };
           }
@@ -221,11 +286,81 @@ function getConsolidatedData() {
     }
   });
 
-  return {
+  let finalData = Object.values(groupedData);
+
+  const fullDataObject = {
     headers: fields,
-    sourceNames: detectedSourceNames, // Send names to frontend
+    sourceNames: detectedSourceNames,
     data: Object.values(groupedData)
   };
+
+  try {
+    const jsonString = JSON.stringify(fullDataObject);
+    const blob = Utilities.newBlob(jsonString, 'text/plain', 'data.json');
+    const zippedBlob = Utilities.zip([blob]);
+    const base64String = Utilities.base64Encode(zippedBlob.getBytes());
+
+    // Prefix to identify compressed content later
+    cache.put(cacheKey, "COMPRESSED:" + base64String, 3600);
+    console.log("Data cached successfully (compressed).");
+
+  } catch(e) {
+    console.error("Could not cache data: " + e.toString());
+    // If caching fails, just return the data without caching
+  }
+
+  return filterData(fullDataObject, filters);
+}
+
+function filterData(allData, filters) {
+  let finalData = allData.data;
+  const filterKeys = Object.keys(filters).filter(key => filters[key]);
+
+  if (filterKeys.length > 0) {
+    finalData = finalData.filter(employee => {
+      return filterKeys.every(key => {
+        return Object.values(employee.sources).some(source => source[key] === filters[key]);
+      });
+    });
+  }
+
+  return {
+    headers: allData.headers,
+    sourceNames: allData.sourceNames,
+    data: finalData
+  };
+}
+
+
+function getSingleEmployee(employeeId) {
+  // This is a simplified version; in a real app, you might want to optimize this
+  // to avoid re-scanning all sheets just for one employee.
+  const allData = getConsolidatedData().data;
+  const employee = allData.find(e => e.normalizedId === employeeId);
+  return employee;
+}
+
+function getFilterOptions() {
+  const fieldsToFilter = ["Work Location", "Division", "Group", "Department", "Section"];
+  const options = {};
+
+  // This is not the most performant way for large datasets, but it's simple.
+  // A better way would be to cache these values.
+  const allData = getConsolidatedData().data;
+
+  fieldsToFilter.forEach(field => {
+    const values = new Set();
+    allData.forEach(employee => {
+      Object.values(employee.sources).forEach(source => {
+        if (source[field]) {
+          values.add(source[field]);
+        }
+      });
+    });
+    options[field] = Array.from(values).sort();
+  });
+
+  return options;
 }
 
 /**
@@ -272,9 +407,11 @@ function saveToMaster(record) {
         sheet.insertColumnsAfter(sheet.getMaxColumns(), rowData.length - sheet.getMaxColumns());
       }
       sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
+      CacheService.getScriptCache().remove("consolidated_data"); // Invalidate cache
       return { success: true, message: "Record Updated in Master" };
     } else {
       sheet.appendRow(rowData);
+      CacheService.getScriptCache().remove("consolidated_data"); // Invalidate cache
       return { success: true, message: "Record Added to Master" };
     }
 
