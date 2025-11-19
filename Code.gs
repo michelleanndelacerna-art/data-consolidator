@@ -165,10 +165,38 @@ function getMasterHeaders() {
  * 4. FETCH & CONSOLIDATE DATA (HARDCODED)
  * ==========================================
  */
-function getConsolidatedData() {
-  console.log("Starting Hardcoded Data Extraction...");
+function getConsolidatedData(filters = {}) {
+  console.log("Starting Hardcoded Data Extraction with filters:", filters);
   const fields = getMasterHeaders();
   
+  // --- FETCH MASTER DATABASE FOR SAVED STATUS ---
+  const masterRecords = {};
+  try {
+    const masterId = cleanId(CONFIG.MASTER.ID);
+    if (masterId && !masterId.includes("REPLACE")) {
+      const ss = SpreadsheetApp.openById(masterId);
+      const sheet = ss.getSheetByName(CONFIG.MASTER.TAB_NAME);
+      if (sheet) {
+        const data = sheet.getDataRange().getValues();
+        const headers = data.shift();
+        const idColIndex = headers.indexOf("Employee ID");
+        if (idColIndex !== -1) {
+          data.forEach(row => {
+            const id = normalizeEmployeeID(row[idColIndex]);
+            if (id) {
+              const record = {};
+              headers.forEach((h, i) => record[h] = row[i]);
+              masterRecords[id] = record;
+            }
+          });
+        }
+      }
+    }
+  } catch(e) {
+    console.error("Could not fetch Master Database: " + e.message);
+  }
+  // -----------------------------------------
+
   const sources = [
     { key: 'SHEET_1', config: CONFIG.SHEET_1 },
     { key: 'SHEET_2', config: CONFIG.SHEET_2 },
@@ -180,11 +208,7 @@ function getConsolidatedData() {
 
   sources.forEach(sourceObj => {
     const sheetConfig = sourceObj.config;
-    
-    if (!sheetConfig.ID || sheetConfig.ID.includes("REPLACE")) {
-      console.warn(`Skipping ${sourceObj.key}: ID is missing.`);
-      return;
-    }
+    if (!sheetConfig.ID || sheetConfig.ID.includes("REPLACE")) return;
 
     try {
       const ss = SpreadsheetApp.openById(cleanId(sheetConfig.ID));
@@ -193,26 +217,20 @@ function getConsolidatedData() {
 
       sheetConfig.TABS.forEach(tabConfig => {
         const sheet = ss.getSheetByName(tabConfig.NAME);
-        if (!sheet) {
-          console.warn(`Tab "${tabConfig.NAME}" not found in ${fileName}`);
-          return;
-        }
+        if (!sheet) return;
 
         const allValues = sheet.getDataRange().getValues();
-        const startRow = tabConfig.DATA_START_ROW - 1; 
-
-        if (allValues.length <= startRow) return; 
-
-        console.log(`Processing ${fileName} - ${tabConfig.NAME}`);
+        const startRow = tabConfig.DATA_START_ROW - 1;
+        if (allValues.length <= startRow) return;
 
         for (let i = startRow; i < allValues.length; i++) {
           const row = allValues[i];
-          if (row.every(c => c === "")) continue; 
+          if (row.every(c => c === "")) continue;
 
           const getVal = (fieldName) => {
             const colLetter = tabConfig.MAP[fieldName];
-            if (!colLetter) return ""; 
-            const colIndex = letterToColumn(colLetter) - 1; 
+            if (!colLetter) return "";
+            const colIndex = letterToColumn(colLetter) - 1;
             return (colIndex >= 0 && colIndex < row.length) ? row[colIndex] : "";
           };
 
@@ -220,77 +238,46 @@ function getConsolidatedData() {
           const cleanIdVal = normalizeEmployeeID(rawID);
           if (!cleanIdVal) continue;
 
-          // --- NAME CONCATENATION LOGIC ---
           let rawName = getVal("Full Name");
           if (!rawName) {
-            const last = getVal("Last Name");
-            const first = getVal("First Name");
-            const mid = getVal("Middle Name");
-            const suffix = getVal("Suffix");
-            
+            const last = getVal("Last Name"), first = getVal("First Name"), mid = getVal("Middle Name"), suffix = getVal("Suffix");
             if (last || first) {
                rawName = `${last}, ${first} ${mid} ${suffix}`.replace(/\s+/g, ' ').trim();
-               // Clean up stray commas if any parts are missing
                if (rawName.startsWith(",")) rawName = rawName.substring(1).trim();
                if (rawName.endsWith(",")) rawName = rawName.substring(0, rawName.length - 1).trim();
             }
           }
-          // -----------------------------------------
 
-          const compositeKey = cleanIdVal;
-          if (!groupedData[compositeKey]) {
-            groupedData[compositeKey] = {
-              key: compositeKey,
+          if (!groupedData[cleanIdVal]) {
+            groupedData[cleanIdVal] = {
+              key: cleanIdVal,
               normalizedId: cleanIdVal,
               normalizedName: String(rawName || "").toUpperCase(),
               sources: {}
             };
-          } else {
-            // Update name if it was missing before but we found it now
-            if ((!groupedData[compositeKey].normalizedName || groupedData[compositeKey].normalizedName === "") && rawName) {
-               groupedData[compositeKey].normalizedName = String(rawName).toUpperCase();
-            }
+          } else if ((!groupedData[cleanIdVal].normalizedName || groupedData[cleanIdVal].normalizedName === "") && rawName) {
+            groupedData[cleanIdVal].normalizedName = String(rawName).toUpperCase();
           }
 
           let sourceRecord = {};
           fields.forEach(field => {
             let val = getVal(field);
-
-            // === FIX: INJECT CONSTRUCTED NAME ===
-            // If the field is "Full Name" and the sheet didn't have a column for it (val is empty),
-            // use the 'rawName' we constructed above.
-            if (field === "Full Name" && !val && rawName) {
-              val = rawName;
-            }
+            if (field === "Full Name" && !val && rawName) val = rawName;
             
-            // === FIX: N/A LOGIC FOR SHEET 3 ===
             if (sourceObj.key === 'SHEET_3') {
-              // Define fields that MUST stay blank if empty (removed "Full Name" from here)
-              const keepBlank = [
-                "Date Resigned", "Reason for Leaving", "Date Hired", 
-                "Last Name", "First Name", "Middle Name", "Suffix", "Date of Birth"
-              ];
-
-              // For everything else, if it's empty, make it "N/A"
-              if (!keepBlank.includes(field)) {
-                 if (val === "" || val === null || val === undefined) {
-                   val = "N/A";
-                 }
+              const keepBlank = ["Date Resigned", "Reason for Leaving", "Date Hired", "Last Name", "First Name", "Middle Name", "Suffix", "Date of Birth"];
+              if (!keepBlank.includes(field) && (val === "" || val === null || val === undefined)) {
+                 val = "N/A";
               }
             }
-            // -----------------------------------
-
-            if (val instanceof Date) {
-              val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
-            }
+            if (val instanceof Date) val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
             sourceRecord[field] = val;
           });
 
-          // MERGE LOGIC (Tabs within same file)
-          if (!groupedData[compositeKey].sources[fileName]) {
-            groupedData[compositeKey].sources[fileName] = sourceRecord;
+          if (!groupedData[cleanIdVal].sources[fileName]) {
+            groupedData[cleanIdVal].sources[fileName] = sourceRecord;
           } else {
-             const existing = groupedData[compositeKey].sources[fileName];
+             const existing = groupedData[cleanIdVal].sources[fileName];
              fields.forEach(f => {
                if (sourceRecord[f] && sourceRecord[f] !== "" && sourceRecord[f] !== "N/A") {
                  existing[f] = sourceRecord[f];
@@ -301,22 +288,101 @@ function getConsolidatedData() {
           }
         }
       });
+    } catch (e) { console.error(`Error processing ${sourceObj.key}: ${e.message}`); }
+  });
 
-    } catch (e) {
-      console.error(`Error processing ${sourceObj.key}: ${e.message}`);
+  let finalData = Object.values(groupedData);
+
+  // --- ATTACH SAVED STATUS ---
+  finalData.forEach(item => {
+    if (masterRecords[item.normalizedId]) {
+      item.masterRecord = masterRecords[item.normalizedId];
     }
   });
+
+  // --- APPLY FILTERS ---
+  const activeFilters = Object.entries(filters).filter(([_, value]) => value);
+  if (activeFilters.length > 0) {
+    finalData = finalData.filter(item => {
+      return activeFilters.every(([field, value]) => {
+        for (const sourceName in item.sources) {
+          if (item.sources[sourceName][field] === value) return true;
+        }
+        return false;
+      });
+    });
+  }
 
   return {
     headers: fields,
     sourceNames: detectedSourceNames,
-    data: Object.values(groupedData)
+    data: finalData
   };
 }
 
 /**
  * ==========================================
- * 5. SAVE TO MASTER
+ * 5. GET FILTER OPTIONS
+ * ==========================================
+ */
+function getFilterOptions() {
+  const fieldsToFilter = ["Work Location", "Division", "Group", "Department", "Section"];
+  const options = {};
+  fieldsToFilter.forEach(f => options[f] = new Set());
+
+  const sources = [
+    { key: 'SHEET_1', config: CONFIG.SHEET_1 },
+    { key: 'SHEET_2', config: CONFIG.SHEET_2 },
+    { key: 'SHEET_3', config: CONFIG.SHEET_3 }
+  ];
+
+  sources.forEach(sourceObj => {
+    const sheetConfig = sourceObj.config;
+    if (!sheetConfig.ID || sheetConfig.ID.includes("REPLACE")) return;
+
+    try {
+      const ss = SpreadsheetApp.openById(cleanId(sheetConfig.ID));
+      sheetConfig.TABS.forEach(tabConfig => {
+        const sheet = ss.getSheetByName(tabConfig.NAME);
+        if (!sheet) return;
+
+        const allValues = sheet.getDataRange().getValues();
+        const startRow = tabConfig.DATA_START_ROW - 1;
+        if (allValues.length <= startRow) return;
+
+        for (let i = startRow; i < allValues.length; i++) {
+          const row = allValues[i];
+          if (row.every(c => c === "")) continue;
+
+          fieldsToFilter.forEach(field => {
+            const colLetter = tabConfig.MAP[field];
+            if (colLetter) {
+              const colIndex = letterToColumn(colLetter) - 1;
+              const val = (colIndex >= 0 && colIndex < row.length) ? row[colIndex] : "";
+              if (val && String(val).trim() !== "" && String(val).trim() !== "N/A") {
+                options[field].add(String(val).trim());
+              }
+            }
+          });
+        }
+      });
+    } catch (e) {
+      console.error(`Error getting filter options from ${sourceObj.key}: ${e.message}`);
+    }
+  });
+
+  // Convert sets to sorted arrays
+  const finalOptions = {};
+  for (const field in options) {
+    finalOptions[field] = Array.from(options[field]).sort();
+  }
+
+  return finalOptions;
+}
+
+/**
+ * ==========================================
+ * 6. SAVE TO MASTER
  * ==========================================
  */
 function saveToMaster(record) {
