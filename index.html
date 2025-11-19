@@ -129,7 +129,7 @@
           
           const card = document.createElement('div');
           card.className = `p-3 rounded border cursor-pointer hover:bg-blue-50 transition group bg-white border-l-4 ${hasConflict ? 'border-l-orange-400' : 'border-l-green-400'}`;
-          card.onclick = () => selectEmployee(item);
+          card.onclick = () => selectEmployee(item, true); // Pass true for initial selection
           
           card.innerHTML = `
             <div class="flex justify-between items-start">
@@ -161,7 +161,7 @@
         renderList(filtered);
       }
 
-      function selectEmployee(record) {
+      function selectEmployee(record, isInitialSelection = false) {
         currentRecord = record;
         
         document.getElementById('emptyState').classList.add('hidden');
@@ -189,18 +189,20 @@
         const tbody = document.getElementById('compareTableBody');
         tbody.innerHTML = '';
 
-        // Smart Defaults Logic
-        fields.forEach(field => {
-          // Find first non-empty value from sources in order
-          let val = "";
-          for (const name of sourceNames) {
-            if (record.sources[name]?.[field]) {
-              val = record.sources[name][field];
-              break;
-            }
-          }
-          finalMergeState[field] = val;
-        });
+        // Smart Defaults Logic - only on first load
+        if (isInitialSelection) {
+            fields.forEach(field => {
+              // Find first non-empty value from sources in order
+              let val = "";
+              for (const name of sourceNames) {
+                if (record.sources[name]?.[field]) {
+                  val = record.sources[name][field];
+                  break;
+                }
+              }
+              finalMergeState[field] = val;
+            });
+        }
 
         fields.forEach(field => {
           // Check Conflict
@@ -210,6 +212,7 @@
 
           const row = document.createElement('tr');
           row.className = 'border-b';
+
           
           let cellsHtml = `<td class="p-4 font-medium text-gray-600 border-r sticky left-0 z-10 ${isIdentical ? 'bg-white' : 'bg-orange-50'}">${field}</td>`;
 
@@ -263,7 +266,7 @@
         // Manually toggle classes to avoid full re-render (Performance)
         const rows = document.getElementById('compareTableBody').children;
         // (Simplification: We re-render for now to keep code clean, but in massive tables, toggle class is better)
-        selectEmployee(currentRecord); 
+        selectEmployee(currentRecord, false); // Pass false to prevent resetting defaults
       }
 
       function updateFinal(field, value) {
