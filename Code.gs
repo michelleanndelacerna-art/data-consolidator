@@ -342,28 +342,60 @@ function getConsolidatedData(filters = {}) {
     }
   }
 
-  // --- 3. FETCH MASTER DB FOR REAL-TIME SAVED STATUS (THIS IS FAST) ---
+// --- 3. FETCH MASTER DB FOR REAL-TIME SAVED STATUS (THIS IS FAST) ---
   const masterRecords = {};
   try {
     const masterId = cleanId(CONFIG.MASTER.ID);
     const ss = SpreadsheetApp.openById(masterId);
     const sheet = ss.getSheetByName(CONFIG.MASTER.TAB_NAME);
+    
     if (sheet) {
       const data = sheet.getDataRange().getValues();
-      const headers = data.shift();
-      const idColIndex = headers.indexOf("Employee ID");
-      if (idColIndex !== -1) {
-        data.forEach(row => {
-          const id = normalizeEmployeeID(row[idColIndex]);
-          if (id) {
+      
+      // 1. Get actual headers from sheet and normalize to UPPERCASE for robust matching
+      const sheetHeaders = data[0].map(h => String(h).trim().toUpperCase());
+      
+      // 2. Create a Map: App Field Name (Title Case) -> Sheet Column Index
+      const appFields = getMasterHeaders(); // e.g. ["Employee ID", "Full Name"...]
+      const colMap = {};
+      
+      appFields.forEach(field => {
+        // Find where "EMPLOYEE ID" is in the sheet, map it to "Employee ID" key
+        const index = sheetHeaders.indexOf(field.toUpperCase());
+        if (index > -1) {
+          colMap[field] = index;
+        }
+      });
+
+      // 3. Check if we found the ID column
+      const idKey = "Employee ID";
+      if (colMap[idKey] !== undefined) {
+        
+        // 4. Iterate rows (skip header row 0)
+        for (let i = 1; i < data.length; i++) {
+          const row = data[i];
+          const idVal = row[colMap[idKey]];
+          const normalizedId = normalizeEmployeeID(idVal);
+
+          if (normalizedId) {
             const record = {};
-            headers.forEach((h, i) => record[h] = row[i]);
-            masterRecords[id] = record;
+            // Pull data using the map so keys match what the Frontend expects
+            Object.entries(colMap).forEach(([field, colIndex]) => {
+              let val = row[colIndex];
+              // Format Dates just like the source files
+              if (val instanceof Date) {
+                val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+              }
+              record[field] = val;
+            });
+            masterRecords[normalizedId] = record;
           }
-        });
+        }
       }
     }
-  } catch(e) { console.error("Could not fetch Master Database: " + e.message); }
+  } catch(e) { 
+    console.error("Could not fetch Master Database: " + e.message);
+  }
 
   // --- 3. PROCESS AND FILTER THE DATA ---
   let finalData = Object.values(groupedData);
@@ -463,16 +495,24 @@ function getFilterOptions() {
 
 /**
  * ==========================================
- * 6. SAVE TO MASTER
+ * 6. SAVE TO MASTER (WITH LOCK PROTECTION)
  * ==========================================
  */
 function saveToMaster(record) {
+  const lock = LockService.getScriptLock();
+  
+  // Wait up to 30 seconds for other users to finish. 
+  // If it takes longer, it returns the error below.
+  if (!lock.tryLock(30000)) {
+    return { success: false, message: "System is busy. Please try again." };
+  }
+
   try {
     const fields = getMasterHeaders();
     const masterId = cleanId(CONFIG.MASTER.ID);
     
     if (!masterId || masterId.includes("REPLACE")) return { success: false, message: "Master ID not set." };
-
+    
     const ss = SpreadsheetApp.openById(masterId);
     let sheet = ss.getSheetByName(CONFIG.MASTER.TAB_NAME);
     
@@ -489,8 +529,9 @@ function saveToMaster(record) {
     let rowIndex = -1;
     if (idColIndex !== -1 && data.length > 1) {
        for (let i = 1; i < data.length; i++) {
+         // Ensure we compare strings to avoid type mismatches
          if (String(data[i][idColIndex]) === String(record[idKey])) {
-           rowIndex = i + 1; 
+           rowIndex = i + 1;
            break;
          }
        }
@@ -523,19 +564,20 @@ function saveToMaster(record) {
                 keysToRemove.push(cacheKeyChunkPrefix + i);
             }
             cache.removeAll(keysToRemove);
-            console.log(`Removed ${keysToRemove.length} data cache keys.`);
         } catch (e) {
-            console.error("Cache clear error, removing meta key only.", e);
             cache.remove(cacheKeyMeta);
         }
     }
     cache.remove(filterCacheKey);
-    console.log("Removed filter options cache.");
     // ------------------------------------
 
     return { success: true, message: message };
+
   } catch (e) {
     return { success: false, message: e.toString() };
+  } finally {
+    // IMPORTANT: Always release the lock so others can save
+    lock.releaseLock();
   }
 }
 
