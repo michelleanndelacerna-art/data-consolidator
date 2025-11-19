@@ -12,37 +12,15 @@ const CONFIG = {
         NAME: "DATABASE",
         DATA_START_ROW: 7, 
         MAP: {
-          "Employee ID": "C",
-          "Full Name": "D",
-          "Last Name": "E",
-          "First Name": "F",
-          "Middle Name": "H",
-          "Suffix": "G",
-          "Nickname": "P",
-          "Gender": "Q",
-          "Date of Birth": "S",
-          "Civil Status": "U",
-          "Active": "I",
-          "Employment Type": "BG",
-          "Company Name": "DL",
-          "Division": "AT",
-          "Group": "DM", 
-          "Department": "AQ",
-          "Section": "AU",
-          "Work Location": "AP",
-          "Position": "AV",
-          "Job Group": "BA",
-          "Superior ID": "BE",
-          "Superior Name": "BF",
-          "Date Hired": "BH",
-          "Date Regular": "BI",
-          "Date Resigned": "BL",
-          "Reason for Leaving": "BS"
+          "Employee ID": "C", "Full Name": "D", "Last Name": "E", "First Name": "F", "Middle Name": "H", "Suffix": "G",
+          "Nickname": "P", "Gender": "Q", "Date of Birth": "S", "Civil Status": "U", "Active": "I",
+          "Employment Type": "BG", "Company Name": "DL", "Division": "AT", "Group": "DM", "Department": "AQ",
+          "Section": "AU", "Work Location": "AP", "Position": "AV", "Job Group": "BA", "Superior ID": "BE",
+          "Superior Name": "BF", "Date Hired": "BH", "Date Regular": "BI", "Date Resigned": "BL", "Reason for Leaving": "BS"
         }
       }
     ]
   },
-
   // --- GOOGLE SHEET 2 ---
   SHEET_2: {
     ID: "1y5Ao8kTzVxXc3WCSdthCbrvVmOHGkAZAAdQNjLRNLj8", 
@@ -51,37 +29,15 @@ const CONFIG = {
         NAME: "as of June 2025",
         DATA_START_ROW: 3, 
         MAP: {
-          "Employee ID": "C",
-          "Full Name": "D",
-          "Last Name": "E",
-          "First Name": "F",
-          "Middle Name": "H",
-          "Suffix": "G",
-          "Nickname": "J",
-          "Gender": "K",
-          "Date of Birth": "L",
-          "Civil Status": "M",
-          "Active": "I",
-          "Employment Type": "X",
-          "Company Name": "O",
-          "Division": "P",
-          "Group": "Q",
-          "Department": "R",
-          "Section": "S",
-          "Work Location": "N",
-          "Position": "T",
-          "Job Group": "U",
-          "Superior ID": "V",
-          "Superior Name": "W",
-          "Date Hired": "Y",
-          "Date Regular": "Z",
-          "Date Resigned": "AA",
-          "Reason for Leaving": "AB"
+          "Employee ID": "C", "Full Name": "D", "Last Name": "E", "First Name": "F", "Middle Name": "H", "Suffix": "G",
+          "Nickname": "J", "Gender": "K", "Date of Birth": "L", "Civil Status": "M", "Active": "I", "Employment Type": "X",
+          "Company Name": "O", "Division": "P", "Group": "Q", "Department": "R", "Section": "S", "Work Location": "N",
+          "Position": "T", "Job Group": "U", "Superior ID": "V", "Superior Name": "W", "Date Hired": "Y",
+          "Date Regular": "Z", "Date Resigned": "AA", "Reason for Leaving": "AB"
         }
       }
     ]
   },
-
   // --- GOOGLE SHEET 3 ---
   SHEET_3: {
     ID: "1TubY9eVVFyFOy-B_KFKlclmgOZPdASS3Ua4nYtdeJeg", 
@@ -90,43 +46,21 @@ const CONFIG = {
         NAME: "Personal Information",
         DATA_START_ROW: 2, 
         MAP: {
-          "Employee ID": "B", 
-          // Name Parts (Concatenation Sources)
-          "Last Name": "D",
-          "First Name": "E",
-          "Middle Name": "G",
-          "Suffix": "F",
-          // Demographics
-          "Nickname": "I",
-          "Gender": "J",
-          "Date of Birth": "K",
-          "Civil Status": "Q"
+          "Employee ID": "B", "Last Name": "D", "First Name": "E", "Middle Name": "G", "Suffix": "F",
+          "Nickname": "I", "Gender": "J", "Date of Birth": "K", "Civil Status": "Q"
         }
       },
       {
         NAME: "HR FIELDS",
         DATA_START_ROW: 2, 
         MAP: {
-          "Employee ID": "B",
-          "Active": "P",
-          "Employment Type": "O",
-          "Company Name": "C",
-          "Division": "D",
-          "Group": "E",
-          "Department": "F",
-          "Section": "G",
-          "Work Location": "H",
-          "Position": "AI",
-          "Superior ID": "U",
-          "Superior Name": "V",
-          "Date Hired": "W",
-          "Date Resigned": "Q",
-          "Reason for Leaving": "S"
+          "Employee ID": "B", "Active": "P", "Employment Type": "O", "Company Name": "C", "Division": "D",
+          "Group": "E", "Department": "F", "Section": "G", "Work Location": "H", "Position": "AI",
+          "Superior ID": "U", "Superior Name": "V", "Date Hired": "W", "Date Resigned": "Q", "Reason for Leaving": "S"
         }
       }
     ]
   },
-
   MASTER: {
     ID: "1Ll9L8D7rkze9vQVgFxs48besFwBiStz0eAIEUPrpTAY", 
     TAB_NAME: "MasterDatabase"
@@ -147,7 +81,7 @@ function doGet() {
 
 /**
  * ==========================================
- * 3. MASTER HEADERS (Standard List)
+ * 3. MASTER HEADERS
  * ==========================================
  */
 function getMasterHeaders() {
@@ -162,11 +96,9 @@ function getMasterHeaders() {
 
 /**
  * ==========================================
- * 4. FETCH & CONSOLIDATE DATA (WITH CACHING)
+ * 4. FETCH & CONSOLIDATE DATA
  * ==========================================
  */
-
-// This "private" function does the heavy lifting of reading the sheets.
 function _fetchRawDataFromSources() {
   const fields = getMasterHeaders();
   const sources = [
@@ -174,14 +106,12 @@ function _fetchRawDataFromSources() {
     { key: 'SHEET_2', config: CONFIG.SHEET_2 },
     { key: 'SHEET_3', config: CONFIG.SHEET_3 }
   ];
-
   let groupedData = {};
   let detectedSourceNames = [];
 
   sources.forEach(sourceObj => {
     const sheetConfig = sourceObj.config;
     if (!sheetConfig.ID || sheetConfig.ID.includes("REPLACE")) return;
-
     try {
       const ss = SpreadsheetApp.openById(cleanId(sheetConfig.ID));
       const fileName = ss.getName();
@@ -190,7 +120,6 @@ function _fetchRawDataFromSources() {
       sheetConfig.TABS.forEach(tabConfig => {
         const sheet = ss.getSheetByName(tabConfig.NAME);
         if (!sheet) return;
-
         const allValues = sheet.getDataRange().getValues();
         const startRow = tabConfig.DATA_START_ROW - 1;
         if (allValues.length <= startRow) return;
@@ -209,15 +138,11 @@ function _fetchRawDataFromSources() {
           const rawID = getVal("Employee ID");
           const cleanIdVal = normalizeEmployeeID(rawID);
           if (!cleanIdVal) continue;
-          
+
           let rawName = getVal("Full Name");
           if (!rawName) {
             const last = getVal("Last Name"), first = getVal("First Name"), mid = getVal("Middle Name"), suffix = getVal("Suffix");
-            if (last || first) {
-               rawName = `${last}, ${first} ${mid} ${suffix}`.replace(/\s+/g, ' ').trim();
-               if (rawName.startsWith(",")) rawName = rawName.substring(1).trim();
-               if (rawName.endsWith(",")) rawName = rawName.substring(0, rawName.length - 1).trim();
-            }
+            if (last || first) rawName = `${last}, ${first} ${mid} ${suffix}`.replace(/\s+/g, ' ').trim().replace(/^,|,$/g, '').trim();
           }
 
           if (!groupedData[cleanIdVal]) {
@@ -226,7 +151,7 @@ function _fetchRawDataFromSources() {
               normalizedId: cleanIdVal,
               normalizedName: String(rawName || "").toUpperCase(),
               sources: {}
-            };
+           };
           } else if ((!groupedData[cleanIdVal].normalizedName || groupedData[cleanIdVal].normalizedName === "") && rawName) {
             groupedData[cleanIdVal].normalizedName = String(rawName).toUpperCase();
           }
@@ -235,14 +160,19 @@ function _fetchRawDataFromSources() {
           fields.forEach(field => {
             let val = getVal(field);
             if (field === "Full Name" && !val && rawName) val = rawName;
-            
             if (sourceObj.key === 'SHEET_3') {
               const keepBlank = ["Date Resigned", "Reason for Leaving", "Date Hired", "Last Name", "First Name", "Middle Name", "Suffix", "Date of Birth"];
-              if (!keepBlank.includes(field) && (val === "" || val === null || val === undefined)) {
-                 val = "N/A";
-              }
+              if (!keepBlank.includes(field) && (val === "" || val === null || val === undefined)) val = "N/A";
             }
-            if (val instanceof Date) val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+            
+            // --- SAFE FIX: Convert to String (Preserving 0 and FALSE) ---
+            if (val instanceof Date) {
+               val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+            } else {
+               // The ?? operator ensures that 0 or false are not turned into blanks
+               val = String(val ?? "").trim(); 
+            }
+
             sourceRecord[field] = val;
           });
 
@@ -251,141 +181,92 @@ function _fetchRawDataFromSources() {
           } else {
              const existing = groupedData[cleanIdVal].sources[fileName];
              fields.forEach(f => {
-               if (sourceRecord[f] && sourceRecord[f] !== "" && sourceRecord[f] !== "N/A") {
-                 existing[f] = sourceRecord[f];
-               } else if ((!existing[f] || existing[f] === "") && sourceRecord[f] === "N/A") {
-                 existing[f] = "N/A";
-               }
+               if (sourceRecord[f] && sourceRecord[f] !== "" && sourceRecord[f] !== "N/A") existing[f] = sourceRecord[f];
+               else if ((!existing[f] || existing[f] === "") && sourceRecord[f] === "N/A") existing[f] = "N/A";
              });
           }
         }
       });
     } catch (e) { console.error(`Error processing ${sourceObj.key}: ${e.message}`); }
   });
-  
   return { groupedData, detectedSourceNames };
 }
 
 function getConsolidatedData(filters = {}) {
   const fields = getMasterHeaders();
   const cache = CacheService.getScriptCache();
-  const cacheKeyMeta = 'consolidated_data_v4_meta';
-  const cacheKeyChunkPrefix = 'consolidated_data_v4_chunk_';
-  const CHUNK_SIZE = 90000; // 90KB, well below the 100KB limit
+  
+  // Updated Cache Key to force refresh with new logic
+  const cacheKeyMeta = 'consolidated_data_v7_meta_safe';
+  const cacheKeyChunkPrefix = 'consolidated_data_v7_chunk_safe_';
+  const CHUNK_SIZE = 90000; 
 
   let groupedData, detectedSourceNames;
-
-  // --- 1. TRY TO GET FROM CACHE USING CHUNKING ---
   const metaCached = cache.get(cacheKeyMeta);
   if (metaCached) {
-    console.log("CACHE HIT: Found metadata. Reconstructing from chunks...");
     try {
       const meta = JSON.parse(metaCached);
       const chunkKeys = [];
-      for (let i = 0; i < meta.chunkCount; i++) {
-        chunkKeys.push(cacheKeyChunkPrefix + i);
-      }
-      
+      for (let i = 0; i < meta.chunkCount; i++) chunkKeys.push(cacheKeyChunkPrefix + i);
       const cachedChunks = cache.getAll(chunkKeys);
       let base64Encoded = "";
       let success = true;
-
       for (let i = 0; i < meta.chunkCount; i++) {
-        const key = cacheKeyChunkPrefix + i;
-        if (cachedChunks[key]) {
-          base64Encoded += cachedChunks[key];
-        } else {
-          console.error("CACHE ERROR: Missing chunk " + i + ". Aborting cache read.");
-          success = false;
-          break;
-        }
+        if (cachedChunks[cacheKeyChunkPrefix + i]) base64Encoded += cachedChunks[cacheKeyChunkPrefix + i];
+        else { success = false; break; }
       }
-
       if (success) {
         const decompressed = Utilities.unzip(Utilities.base64Decode(base64Encoded));
         const dataObj = JSON.parse(decompressed.getDataAsString());
         groupedData = dataObj.groupedData;
         detectedSourceNames = dataObj.detectedSourceNames;
       }
-    } catch(e) {
-      console.error("CACHE ERROR: Could not parse or reconstruct from cache. Refetching. Error: " + e.message);
-    }
+    } catch(e) {}
   }
 
-  // --- 2. IF CACHE MISS OR CORRUPT, FETCH FRESH DATA ---
   if (!groupedData) {
-    console.log("CACHE MISS: Fetching fresh data from sources...");
     const freshData = _fetchRawDataFromSources();
     groupedData = freshData.groupedData;
     detectedSourceNames = freshData.detectedSourceNames;
-    
-    console.log("STORING IN CACHE: Zipping, chunking, and storing fresh data...");
     try {
       const dataToCache = { groupedData, detectedSourceNames };
       const blob = Utilities.newBlob(JSON.stringify(dataToCache), 'application/json');
       const compressed = Utilities.zip([blob]);
       const encodedData = Utilities.base64Encode(compressed.getBytes());
-
       const numChunks = Math.ceil(encodedData.length / CHUNK_SIZE);
       const chunks = {};
-
-      for (let i = 0; i < numChunks; i++) {
-        const chunk = encodedData.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-        chunks[cacheKeyChunkPrefix + i] = chunk;
-      }
-      
+      for (let i = 0; i < numChunks; i++) chunks[cacheKeyChunkPrefix + i] = encodedData.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
       chunks[cacheKeyMeta] = JSON.stringify({ chunkCount: numChunks });
-      cache.putAll(chunks, 3600); // Cache all chunks and meta for 1 hour
-    } catch (e) {
-      console.error("CACHE WRITE ERROR: Could not store chunks. Error: " + e.message);
-      // This may be due to total cache size limit, but we'll proceed with the fresh data for this request.
-    }
+      cache.putAll(chunks, 3600); 
+    } catch (e) {}
   }
 
-// --- 3. FETCH MASTER DB FOR REAL-TIME SAVED STATUS (THIS IS FAST) ---
   const masterRecords = {};
   try {
     const masterId = cleanId(CONFIG.MASTER.ID);
     const ss = SpreadsheetApp.openById(masterId);
     const sheet = ss.getSheetByName(CONFIG.MASTER.TAB_NAME);
-    
     if (sheet) {
       const data = sheet.getDataRange().getValues();
-      
-      // 1. Get actual headers from sheet and normalize to UPPERCASE for robust matching
       const sheetHeaders = data[0].map(h => String(h).trim().toUpperCase());
-      
-      // 2. Create a Map: App Field Name (Title Case) -> Sheet Column Index
-      const appFields = getMasterHeaders(); // e.g. ["Employee ID", "Full Name"...]
+      const appFields = getMasterHeaders(); 
       const colMap = {};
-      
       appFields.forEach(field => {
-        // Find where "EMPLOYEE ID" is in the sheet, map it to "Employee ID" key
         const index = sheetHeaders.indexOf(field.toUpperCase());
-        if (index > -1) {
-          colMap[field] = index;
-        }
+        if (index > -1) colMap[field] = index;
       });
-
-      // 3. Check if we found the ID column
       const idKey = "Employee ID";
       if (colMap[idKey] !== undefined) {
-        
-        // 4. Iterate rows (skip header row 0)
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
-          const idVal = row[colMap[idKey]];
-          const normalizedId = normalizeEmployeeID(idVal);
-
+          const normalizedId = normalizeEmployeeID(row[colMap[idKey]]);
           if (normalizedId) {
             const record = {};
-            // Pull data using the map so keys match what the Frontend expects
             Object.entries(colMap).forEach(([field, colIndex]) => {
               let val = row[colIndex];
-              // Format Dates just like the source files
-              if (val instanceof Date) {
-                val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
-              }
+              if (val instanceof Date) val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+              // Safe String Convert here too
+              else val = String(val ?? "").trim(); 
               record[field] = val;
             });
             masterRecords[normalizedId] = record;
@@ -393,17 +274,11 @@ function getConsolidatedData(filters = {}) {
         }
       }
     }
-  } catch(e) { 
-    console.error("Could not fetch Master Database: " + e.message);
-  }
+  } catch(e) {}
 
-  // --- 3. PROCESS AND FILTER THE DATA ---
   let finalData = Object.values(groupedData);
-
   finalData.forEach(item => {
-    if (masterRecords[item.normalizedId]) {
-      item.masterRecord = masterRecords[item.normalizedId];
-    }
+    if (masterRecords[item.normalizedId]) item.masterRecord = masterRecords[item.normalizedId];
   });
 
   const activeFilters = Object.entries(filters).filter(([_, value]) => value);
@@ -411,39 +286,30 @@ function getConsolidatedData(filters = {}) {
     finalData = finalData.filter(item => {
       return activeFilters.every(([field, value]) => {
         for (const sourceName in item.sources) {
-          if (item.sources[sourceName] && item.sources[sourceName][field] === value) return true;
+          // Robust String Comparison
+          if (item.sources[sourceName] && String(item.sources[sourceName][field] ?? "").trim() === String(value).trim()) return true;
         }
         return false;
       });
     });
   }
-
-  return {
-    headers: fields,
-    sourceNames: detectedSourceNames,
-    data: finalData
-  };
+  return { headers: fields, sourceNames: detectedSourceNames, data: finalData };
 }
 
 /**
  * ==========================================
- * 5. GET FILTER OPTIONS (WITH CACHING)
+ * 5. GET FILTER OPTIONS
  * ==========================================
  */
 function getFilterOptions() {
   const cache = CacheService.getScriptCache();
-  const cacheKey = 'filter_options_v2';
+  const cacheKey = 'filter_options_v7_safe'; // Updated Key
   const cached = cache.get(cacheKey);
+  if (cached) return JSON.parse(cached);
 
-  if (cached) {
-    console.log("CACHE HIT: Returning filter options from cache.");
-    return JSON.parse(cached);
-  }
-
-  console.log("CACHE MISS: Fetching fresh filter options...");
   const fieldsToFilter = ["Work Location", "Division", "Group", "Department", "Section"];
-  const options = {};
-  fieldsToFilter.forEach(f => options[f] = new Set());
+  const rawOptions = {};
+  fieldsToFilter.forEach(f => rawOptions[f] = new Set());
 
   const sources = [
     { key: 'SHEET_1', config: CONFIG.SHEET_1 },
@@ -454,7 +320,6 @@ function getFilterOptions() {
   sources.forEach(sourceObj => {
     const sheetConfig = sourceObj.config;
     if (!sheetConfig.ID || sheetConfig.ID.includes("REPLACE")) return;
-
     try {
       const ss = SpreadsheetApp.openById(cleanId(sheetConfig.ID));
       sheetConfig.TABS.forEach(tabConfig => {
@@ -463,7 +328,6 @@ function getFilterOptions() {
         const allValues = sheet.getDataRange().getValues();
         const startRow = tabConfig.DATA_START_ROW - 1;
         if (allValues.length <= startRow) return;
-
         for (let i = startRow; i < allValues.length; i++) {
           const row = allValues[i];
           if (row.every(c => c === "")) continue;
@@ -471,142 +335,138 @@ function getFilterOptions() {
             const colLetter = tabConfig.MAP[field];
             if (colLetter) {
               const colIndex = letterToColumn(colLetter) - 1;
-              const val = (colIndex >= 0 && colIndex < row.length) ? row[colIndex] : "";
-              if (val && String(val).trim() !== "" && String(val).trim() !== "N/A") {
-                options[field].add(String(val).trim());
-              }
+              let val = (colIndex >= 0 && colIndex < row.length) ? row[colIndex] : "";
+              // Safe Convert
+              val = String(val ?? "").trim();
+              if (val && val !== "N/A") rawOptions[field].add(val);
             }
           });
         }
       });
-    } catch (e) { console.error(`Error getting filter options from ${sourceObj.key}: ${e.message}`); }
+    } catch (e) {}
   });
 
-  const finalOptions = {};
-  for (const field in options) {
-    finalOptions[field] = Array.from(options[field]).sort();
-  }
+  let orgChartRows = [];
+  try {
+    const masterId = cleanId(CONFIG.MASTER.ID);
+    const ss = SpreadsheetApp.openById(masterId);
+    const orgSheet = ss.getSheetByName("orgchartcode");
+    if (orgSheet) {
+      const data = orgSheet.getDataRange().getValues();
+      for(let i = 1; i < data.length; i++) {
+         orgChartRows.push({
+           Division: String(data[i][0] ?? "").trim(),
+           Group: String(data[i][1] ?? "").trim(),
+           Department: String(data[i][2] ?? "").trim(),
+           Section: String(data[i][3] ?? "").trim()
+         });
+      }
+    }
+  } catch (e) {}
 
-  console.log("STORING IN CACHE: Storing filter options.");
-  cache.put(cacheKey, JSON.stringify(finalOptions), 3600); // Cache for 1 hour
-
-  return finalOptions;
+  const finalOutput = { raw: {}, orgChart: orgChartRows };
+  for (const field in rawOptions) finalOutput.raw[field] = Array.from(rawOptions[field]).sort();
+  cache.put(cacheKey, JSON.stringify(finalOutput), 3600);
+  return finalOutput;
 }
 
 /**
  * ==========================================
- * 6. SAVE TO MASTER (WITH LOCK PROTECTION)
+ * 6. SAVE TO MASTER (SINGLE)
  * ==========================================
  */
 function saveToMaster(record) {
+  return saveBulkToMaster([record]);
+}
+
+/**
+ * ==========================================
+ * 7. BULK SAVE TO MASTER
+ * ==========================================
+ */
+function saveBulkToMaster(records) {
   const lock = LockService.getScriptLock();
-  
-  // Wait up to 30 seconds for other users to finish. 
-  // If it takes longer, it returns the error below.
-  if (!lock.tryLock(30000)) {
-    return { success: false, message: "System is busy. Please try again." };
-  }
+  if (!lock.tryLock(50000)) return { success: false, message: "System busy. Try again." };
 
   try {
     const fields = getMasterHeaders();
     const masterId = cleanId(CONFIG.MASTER.ID);
-    
-    if (!masterId || masterId.includes("REPLACE")) return { success: false, message: "Master ID not set." };
+    if (!masterId) return { success: false, message: "Master ID not set." };
     
     const ss = SpreadsheetApp.openById(masterId);
     let sheet = ss.getSheetByName(CONFIG.MASTER.TAB_NAME);
-    
     if (!sheet) {
       sheet = ss.insertSheet(CONFIG.MASTER.TAB_NAME);
       sheet.appendRow(fields);
-      sheet.getRange(1, 1, 1, fields.length).setFontWeight("bold");
     }
 
     const data = sheet.getDataRange().getValues();
     const idKey = "Employee ID";
     const idColIndex = fields.indexOf(idKey); 
 
-    let rowIndex = -1;
+    const idMap = new Map();
     if (idColIndex !== -1 && data.length > 1) {
        for (let i = 1; i < data.length; i++) {
-         // Ensure we compare strings to avoid type mismatches
-         if (String(data[i][idColIndex]) === String(record[idKey])) {
-           rowIndex = i + 1;
-           break;
-         }
+         idMap.set(String(data[i][idColIndex]), i);
        }
     }
 
-    const rowData = fields.map(f => record[f] || "");
-    let message = "";
+    let added = 0;
+    let updated = 0;
+    const newRows = [];
 
-    if (rowIndex > 0) {
-      sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
-      message = "Record Updated";
-    } else {
-      sheet.appendRow(rowData);
-      message = "Record Added";
+    records.forEach(record => {
+       const id = String(record[idKey]);
+       const rowData = fields.map(f => record[f] || "");
+
+       if (idMap.has(id)) {
+           const rowIndex = idMap.get(id);
+           data[rowIndex] = rowData; 
+           updated++;
+       } else {
+           newRows.push(rowData);
+           added++;
+       }
+    });
+
+    if (updated > 0) {
+       sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
+    }
+    if (newRows.length > 0) {
+       sheet.getRange(data.length + 1, 1, newRows.length, newRows[0].length).setValues(newRows);
     }
 
-    // --- CLEAR CACHE ON SUCCESSFUL SAVE ---
-    console.log("Record saved. Clearing cache...");
     const cache = CacheService.getScriptCache();
-    const cacheKeyMeta = 'consolidated_data_v4_meta';
-    const cacheKeyChunkPrefix = 'consolidated_data_v4_chunk_';
-    const filterCacheKey = 'filter_options_v2';
-
-    const metaCached = cache.get(cacheKeyMeta);
-    if (metaCached) {
-        try {
-            const meta = JSON.parse(metaCached);
-            const keysToRemove = [cacheKeyMeta];
-            for (let i = 0; i < meta.chunkCount; i++) {
-                keysToRemove.push(cacheKeyChunkPrefix + i);
-            }
-            cache.removeAll(keysToRemove);
-        } catch (e) {
-            cache.remove(cacheKeyMeta);
-        }
-    }
-    cache.remove(filterCacheKey);
-    // ------------------------------------
-
-    return { success: true, message: message };
+    const keys = ['consolidated_data_v7_meta_safe', 'filter_options_v7_safe'];
+    cache.removeAll(keys);
+    
+    return { success: true, message: `Bulk Saved: ${updated} Updated, ${added} Added.` };
 
   } catch (e) {
     return { success: false, message: e.toString() };
   } finally {
-    // IMPORTANT: Always release the lock so others can save
     lock.releaseLock();
   }
 }
 
 /**
  * ==========================================
- * 6. HELPER FUNCTIONS
+ * 8. HELPERS
  * ==========================================
  */
-
 function letterToColumn(letter) {
-  let column = 0;
-  const length = letter.length;
-  for (let i = 0; i < length; i++) {
-    column += (letter.charCodeAt(i) - 64) * Math.pow(26, length - i - 1);
-  }
+  let column = 0, length = letter.length;
+  for (let i = 0; i < length; i++) column += (letter.charCodeAt(i) - 64) * Math.pow(26, length - i - 1);
   return column;
 }
-
 function cleanId(idOrUrl) {
   if (!idOrUrl) return null;
   const match = idOrUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
   return match ? match[1] : idOrUrl;
 }
-
 function normalizeEmployeeID(rawId) {
   if (!rawId) return "";
   let idStr = String(rawId).trim().replace(/[^0-9]/g, '');
-  if (idStr.length > 0 && idStr.length <= 5) {
-    idStr = "2400700" + idStr; 
-  }
+  if (idStr.length > 0 && idStr.length <= 5) idStr = "2400700" + idStr;
   return idStr;
 }
