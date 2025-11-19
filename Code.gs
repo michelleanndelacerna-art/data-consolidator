@@ -209,7 +209,7 @@ function _fetchRawDataFromSources() {
           const rawID = getVal("Employee ID");
           const cleanIdVal = normalizeEmployeeID(rawID);
           if (!cleanIdVal) continue;
-
+          
           let rawName = getVal("Full Name");
           if (!rawName) {
             const last = getVal("Last Name"), first = getVal("First Name"), mid = getVal("Middle Name"), suffix = getVal("Suffix");
@@ -230,7 +230,7 @@ function _fetchRawDataFromSources() {
           } else if ((!groupedData[cleanIdVal].normalizedName || groupedData[cleanIdVal].normalizedName === "") && rawName) {
             groupedData[cleanIdVal].normalizedName = String(rawName).toUpperCase();
           }
-
+          
           let sourceRecord = {};
           fields.forEach(field => {
             let val = getVal(field);
@@ -262,7 +262,7 @@ function _fetchRawDataFromSources() {
       });
     } catch (e) { console.error(`Error processing ${sourceObj.key}: ${e.message}`); }
   });
-
+  
   return { groupedData, detectedSourceNames };
 }
 
@@ -285,7 +285,7 @@ function getConsolidatedData(filters = {}) {
       for (let i = 0; i < meta.chunkCount; i++) {
         chunkKeys.push(cacheKeyChunkPrefix + i);
       }
-
+      
       const cachedChunks = cache.getAll(chunkKeys);
       let base64Encoded = "";
       let success = true;
@@ -318,7 +318,7 @@ function getConsolidatedData(filters = {}) {
     const freshData = _fetchRawDataFromSources();
     groupedData = freshData.groupedData;
     detectedSourceNames = freshData.detectedSourceNames;
-
+    
     console.log("STORING IN CACHE: Zipping, chunking, and storing fresh data...");
     try {
       const dataToCache = { groupedData, detectedSourceNames };
@@ -333,7 +333,7 @@ function getConsolidatedData(filters = {}) {
         const chunk = encodedData.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
         chunks[cacheKeyChunkPrefix + i] = chunk;
       }
-
+      
       chunks[cacheKeyMeta] = JSON.stringify({ chunkCount: numChunks });
       cache.putAll(chunks, 3600); // Cache all chunks and meta for 1 hour
     } catch (e) {
