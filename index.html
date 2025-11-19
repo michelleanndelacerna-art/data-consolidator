@@ -9,12 +9,8 @@
       .selected-cell { background-color: #dbeafe; border: 2px solid #2563eb; font-weight: 600; }
       .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-      
-      /* Scrollbar Hide for clean UI */
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-      /* Modal Animation */
       .modal-enter { opacity: 0; transform: scale(0.95); }
       .modal-enter-active { opacity: 1; transform: scale(1); transition: opacity 0.2s, transform 0.2s; }
       .modal-exit { opacity: 1; transform: scale(1); }
@@ -30,15 +26,31 @@
         </div>
         <h1 class="text-xl font-bold text-gray-700">Data Consolidator</h1>
       </div>
-      <button onclick="loadData()" class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm font-medium transition">
-        <i class="ph ph-arrows-clockwise"></i> Refresh Data
-      </button>
+      <div class="flex gap-2">
+         <button onclick="saveAllResolved()" id="bulkSaveBtn" class="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded shadow font-medium transition">
+           <i class="ph ph-floppy-disk-back"></i> Save All Resolved
+         </button>
+         
+         <button onclick="loadData()" class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm font-medium transition">
+           <i class="ph ph-arrows-clockwise"></i> Refresh
+         </button>
+      </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
       
       <aside class="w-1/3 min-w-[350px] bg-white border-r flex flex-col z-0">
         <div class="p-4 border-b bg-gray-50">
+          <div class="mb-5">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="font-bold text-gray-700 uppercase tracking-wider">Progress</span>
+              <span class="font-mono text-blue-600 font-semibold" id="progressText">...</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+              <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+            </div>
+          </div>
+
           <div class="relative group">
             <i class="ph ph-magnifying-glass absolute left-3 top-3 text-gray-400"></i>
             <input type="text" id="searchInput" placeholder="Search Name or ID..." 
@@ -49,15 +61,28 @@
             </button>
           </div>
           
-          <label class="flex items-center gap-2 mt-3 text-xs text-gray-600 cursor-pointer select-none hover:text-blue-600 transition">
-            <input type="checkbox" id="hideSavedCheckbox" onchange="filterList()" class="rounded text-blue-600 focus:ring-blue-500">
-            <span>Hide Saved Employees</span>
-          </label>
+          <div class="flex flex-col gap-2 mt-3">
+            <label class="flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none hover:text-blue-600 transition">
+              <input type="checkbox" id="hideSavedCheckbox" onchange="filterList()" class="rounded text-blue-600 focus:ring-blue-500">
+              <span>Hide Saved Employees</span>
+            </label>
+            <label class="flex items-center gap-2 text-xs text-orange-600 cursor-pointer select-none hover:text-orange-700 transition font-medium">
+              <input type="checkbox" id="showConflictsCheckbox" onchange="filterList()" class="rounded text-orange-500 focus:ring-orange-500">
+              <span>Show Conflicts Only</span>
+            </label>
+            <label class="flex items-center gap-2 text-xs text-green-600 cursor-pointer select-none hover:text-green-700 transition font-medium">
+              <input type="checkbox" id="showResolvedCheckbox" onchange="filterList()" class="rounded text-green-500 focus:ring-green-500">
+              <span>Show Resolved Only</span>
+            </label>
+          </div>
         </div>
 
-        <div class="border-b bg-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
-             <div id="filterContainer" class="flex gap-2 overflow-x-auto p-3 no-scrollbar">
-               </div>
+        <div class="border-b bg-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] relative group">
+             <button onclick="resetFilters()" title="Reset All Filters" 
+                     class="absolute right-1 top-1 z-10 bg-white/90 p-1 rounded-full shadow border hover:bg-red-50 text-red-500 hidden group-hover:block">
+                <i class="ph ph-funnel-x"></i>
+             </button>
+             <div id="filterContainer" class="flex gap-2 overflow-x-auto p-3 no-scrollbar pr-8"></div>
         </div>
         
         <div id="loadingState" class="flex flex-col items-center justify-center h-64 hidden">
@@ -80,13 +105,18 @@
               <h2 class="text-2xl font-bold text-gray-800" id="currentEmployeeName">...</h2>
               <p class="text-sm text-gray-500">Normalized ID: <span id="currentEmployeeID" class="font-mono text-blue-600">...</span></p>
             </div>
-            
             <div class="flex gap-2">
-               <button onclick="autoResolve()" class="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm font-semibold rounded-lg transition flex items-center gap-2" title="Automatically picks the most frequent value for every field">
+               <button onclick="resetMerge()" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg transition flex items-center gap-2" title="Reset all changes">
+                 <i class="ph ph-arrow-counter-clockwise"></i> Reset
+               </button>
+               <button onclick="markResolved()" class="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 text-sm font-semibold rounded-lg transition flex items-center gap-2" title="Mark as locally resolved">
+                 <i class="ph ph-check"></i> Mark Resolved
+               </button>
+               <button onclick="autoResolve()" class="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm font-semibold rounded-lg transition flex items-center gap-2" title="Auto pick most frequent values">
                  <i class="ph ph-magic-wand"></i> Auto-Resolve
                </button>
                <span class="px-3 py-2 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold flex items-center gap-1">
-                 <i class="ph ph-warning"></i> Click cells to select truth
+                 <i class="ph ph-warning"></i> Click cells
                </span>
             </div>
           </div>
@@ -116,7 +146,7 @@
                     <i class="ph ph-warning text-2xl text-yellow-600"></i>
                 </div>
                 <h3 class="text-lg font-bold text-gray-900">Confirm Overwrite</h3>
-                <p class="text-sm text-gray-500 mt-2">This record is already saved in the Master Database. Are you sure you want to overwrite it with these changes?</p>
+                <p class="text-sm text-gray-500 mt-2">This record is already saved in the Master Database. Are you sure you want to overwrite it?</p>
             </div>
             <div class="flex gap-3 justify-end">
                 <button onclick="closeModal(false)" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition">Cancel</button>
@@ -132,21 +162,15 @@
       let currentRecord = null;
       let finalMergeState = {};
       let currentFilters = {};
+      let fullFilterOptions = null;
       let modalCallback = null;
 
-      window.onload = () => {
-        loadData();
-        loadFilters();
-      };
+      window.onload = () => { loadData(); loadFilters(); };
 
-      // --- 1. DATA LOADING ---
       function loadData() {
         document.getElementById('loadingState').classList.remove('hidden');
         document.getElementById('employeeList').innerHTML = '';
-        google.script.run
-          .withSuccessHandler(onDataLoaded)
-          .withFailureHandler(showError)
-          .getConsolidatedData(currentFilters);
+        google.script.run.withSuccessHandler(onDataLoaded).withFailureHandler(showError).getConsolidatedData(currentFilters);
       }
 
       function onDataLoaded(response) {
@@ -154,151 +178,150 @@
         fields = response.headers;
         sourceNames = response.sourceNames;
         document.getElementById('loadingState').classList.add('hidden');
-        renderList(allData);
+        updateStats();
+        filterList();
       }
 
-      // UPDATED: Enforce Specific Order for Filter Buttons
+      function updateStats() {
+        const total = allData.length;
+        const saved = allData.filter(d => d.masterRecord).length;
+        const percent = total === 0 ? 0 : Math.round((saved / total) * 100);
+        document.getElementById('progressText').innerText = `${saved} / ${total} (${percent}%)`;
+        document.getElementById('progressBar').style.width = `${percent}%`;
+      }
+
       function loadFilters() {
-        google.script.run.withSuccessHandler(renderFilters).getFilterOptions();
+        google.script.run.withSuccessHandler(data => {
+          fullFilterOptions = data;
+          renderDropdowns();
+        }).getFilterOptions();
       }
 
-      function renderFilters(options) {
+      function renderDropdowns() {
         const container = document.getElementById('filterContainer');
         container.innerHTML = ''; 
-        
-        // Enforce Specific Order
-        const orderedKeys = ['Work Location', 'Division', 'Group', 'Department', 'Section'];
-        
-        orderedKeys.forEach(field => {
-          const values = options[field];
-          if (values && values.length > 0) {
-            const div = document.createElement('div');
-            div.className = 'relative min-w-[140px]'; // Set minimum width for "one line" look
+        const filterKeys = ['Work Location', 'Division', 'Group', 'Department', 'Section'];
+        filterKeys.forEach(field => {
+          const div = document.createElement('div');
+          div.className = 'relative min-w-[140px]';
+          const select = document.createElement('select');
+          select.className = 'w-full text-xs p-2 pr-6 border border-gray-200 rounded-lg bg-white appearance-none focus:ring-2 focus:ring-blue-500 shadow-sm text-gray-600 font-medium';
+          select.onchange = () => handleFilterChange(field, select.value);
+          const defaultOption = document.createElement('option');
+          defaultOption.value = '';
+          defaultOption.textContent = field;
+          select.appendChild(defaultOption);
 
-            const select = document.createElement('select');
-            select.className = 'w-full text-xs p-2 pr-6 border border-gray-200 rounded-lg bg-white appearance-none focus:ring-2 focus:ring-blue-500 shadow-sm text-gray-600 font-medium';
-            select.onchange = () => applyFilter(field, select.value);
-            
-            const defaultOption = document.createElement('option');
-            defaultOption.value = '';
-            defaultOption.textContent = field; // Just show the Field Name (e.g. "Division")
-            select.appendChild(defaultOption);
-
-            values.forEach(v => {
-              const option = document.createElement('option');
-              option.value = v;
-              option.textContent = v;
-              select.appendChild(option);
-            });
-            
-            const icon = document.createElement('i');
-            icon.className = 'ph ph-caret-down absolute right-2 top-2.5 text-gray-400 pointer-events-none';
-
-            div.appendChild(select);
-            div.appendChild(icon);
-            container.appendChild(div);
-          }
+          getDependentOptions(field).forEach(opt => {
+             if (opt === '---') {
+                const separator = document.createElement('option');
+                separator.disabled = true; separator.textContent = '--- Other ---'; select.appendChild(separator);
+             } else {
+                const option = document.createElement('option');
+                option.value = opt; option.textContent = opt;
+                if(currentFilters[field] === opt) option.selected = true;
+                select.appendChild(option);
+             }
+          });
+          const icon = document.createElement('i');
+          icon.className = 'ph ph-caret-down absolute right-2 top-2.5 text-gray-400 pointer-events-none';
+          div.appendChild(select); div.appendChild(icon); container.appendChild(div);
         });
       }
 
-      // --- 2. FILTERING & SEARCH ---
-      function applyFilter(field, value) {
-        currentFilters[field] = value;
-        loadData();
+      function getDependentOptions(field) {
+        if (!fullFilterOptions) return [];
+        if (field === 'Work Location') return fullFilterOptions.raw['Work Location'] || [];
+        const hierarchy = fullFilterOptions.orgChart || [];
+        const rawDataList = fullFilterOptions.raw[field] || [];
+        
+        let validOrgValues = new Set();
+        hierarchy.filter(row => {
+           if (field === 'Group' && currentFilters['Division'] && row.Division !== currentFilters['Division']) return false;
+           if (field === 'Department' && ((currentFilters['Division'] && row.Division !== currentFilters['Division']) || (currentFilters['Group'] && row.Group !== currentFilters['Group']))) return false;
+           if (field === 'Section' && ((currentFilters['Division'] && row.Division !== currentFilters['Division']) || (currentFilters['Group'] && row.Group !== currentFilters['Group']) || (currentFilters['Department'] && row.Department !== currentFilters['Department']))) return false;
+           return true;
+        }).forEach(row => { if (row[field]) validOrgValues.add(row[field]); });
+        
+        const sortedOrg = Array.from(validOrgValues).sort();
+        const others = rawDataList.filter(val => !validOrgValues.has(val));
+        return others.length > 0 ? [...sortedOrg, '---', ...others] : sortedOrg;
       }
 
-      function clearSearch() {
-        document.getElementById('searchInput').value = '';
-        filterList();
+      function handleFilterChange(field, value) {
+        currentFilters[field] = value;
+        if (field === 'Division') { currentFilters['Group'] = ''; currentFilters['Department'] = ''; currentFilters['Section'] = ''; }
+        else if (field === 'Group') { currentFilters['Department'] = ''; currentFilters['Section'] = ''; }
+        else if (field === 'Department') { currentFilters['Section'] = ''; }
+        renderDropdowns(); loadData();
       }
+      
+      function resetFilters() { currentFilters = {}; renderDropdowns(); loadData(); }
+      function clearSearch() { document.getElementById('searchInput').value = ''; filterList(); }
 
       function filterList() {
         const query = document.getElementById('searchInput').value.toLowerCase();
         const hideSaved = document.getElementById('hideSavedCheckbox').checked; 
+        const showConflicts = document.getElementById('showConflictsCheckbox').checked; 
+        const showResolved = document.getElementById('showResolvedCheckbox').checked; 
 
         const filtered = allData.filter(d => {
           const matchesSearch = d.normalizedName.toLowerCase().includes(query) || d.normalizedId.includes(query);
           if (hideSaved && d.masterRecord) return false;
+          if (showConflicts) { if (!detectGlobalConflict(d) || d.resolvedLocally) return false; }
+          if (showResolved && !d.resolvedLocally) return false;
           return matchesSearch;
         });
         renderList(filtered);
       }
 
-      // --- 3. LIST RENDERING ---
       function renderList(data) {
         const container = document.getElementById('employeeList');
         container.innerHTML = '';
-
-        if(data.length === 0) {
-          container.innerHTML = '<p class="p-4 text-center text-gray-400">No records found.</p>';
-          return;
-        }
+        if(data.length === 0) { container.innerHTML = '<p class="p-4 text-center text-gray-400">No records found.</p>'; return; }
 
         data.forEach(item => {
           const srcCount = Object.keys(item.sources).length;
-          const hasConflict = detectGlobalConflict(item);
-          
+          const hasConflict = detectGlobalConflict(item) && !item.resolvedLocally;
           const card = document.createElement('div');
           card.className = `p-3 rounded border cursor-pointer hover:bg-blue-50 transition group bg-white border-l-4 ${hasConflict ? 'border-l-orange-400' : 'border-l-green-400'}`;
           card.onclick = () => selectEmployee(item, true);
           
+          let statusBadge = '';
+          if (item.masterRecord) statusBadge = '<span class="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full font-medium">✓ Saved</span>';
+          else if (item.resolvedLocally) statusBadge = '<span class="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full font-medium">✓ Resolved</span>';
+
           card.innerHTML = `
             <div class="flex justify-between items-start">
-              <div>
-                <h3 class="font-semibold text-gray-800">${item.normalizedName} ${item.masterRecord ? '<span class="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full font-medium">✓ Saved</span>' : ''}</h3>
-                <p class="text-xs text-gray-500 font-mono">${item.normalizedId}</p>
-              </div>
-              <div class="flex gap-1">
-                ${sourceNames.map(name => 
-                  `<div class="w-2 h-2 rounded-full ${item.sources[name] ? 'bg-blue-500' : 'bg-gray-200'}" title="${name}"></div>`
-                ).join('')}
-              </div>
+              <div><h3 class="font-semibold text-gray-800">${item.normalizedName} ${statusBadge}</h3><p class="text-xs text-gray-500 font-mono">${item.normalizedId}</p></div>
+              <div class="flex gap-1">${sourceNames.map(name => `<div class="w-2 h-2 rounded-full ${item.sources[name] ? 'bg-blue-500' : 'bg-gray-200'}" title="${name}"></div>`).join('')}</div>
             </div>
             <div class="mt-2 flex justify-between items-center">
                <span class="text-[10px] text-gray-400 uppercase tracking-wide">${srcCount} Sources</span>
                ${hasConflict ? '<span class="text-[10px] text-orange-600 bg-orange-100 px-2 py-0.5 rounded">Conflict</span>' : ''}
-            </div>
-          `;
+            </div>`;
           container.appendChild(card);
         });
       }
 
-      // --- 4. MERGE INTERFACE ---
       function selectEmployee(record, isInitialSelection = false) {
         currentRecord = record;
-        
         document.getElementById('emptyState').classList.add('hidden');
         document.getElementById('mergeInterface').classList.remove('hidden');
         document.getElementById('currentEmployeeName').innerText = record.normalizedName;
         document.getElementById('currentEmployeeID').innerText = record.normalizedId;
-
-        // Headers
-        const thead = document.getElementById('tableHeader');
-        let headerHtml = `<tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
-                            <th class="p-4 font-medium w-48 sticky left-0 bg-gray-50 z-10 border-r border-b">Field</th>`;
-        const colors = ['text-blue-700 bg-blue-100/50', 'text-purple-700 bg-purple-100/50', 'text-green-700 bg-green-100/50'];
-        sourceNames.forEach((name, index) => {
-          const colorClass = colors[index % colors.length];
-          headerHtml += `<th class="p-4 font-medium ${colorClass} min-w-[200px] border-b">${name}</th>`;
-        });
-        headerHtml += `<th class="p-4 font-medium bg-gray-800 text-white min-w-[250px] sticky right-0 z-10 shadow-xl border-b">Final Merged Data</th></tr>`;
-        thead.innerHTML = headerHtml;
-
-        // Defaults Logic
+        
         if (isInitialSelection) {
-            if (record.masterRecord) {
-              fields.forEach(field => finalMergeState[field] = record.masterRecord[field] || "");
+            if (record.manualMergeData) {
+                finalMergeState = { ...record.manualMergeData };
+            } else if (record.masterRecord) {
+                fields.forEach(field => finalMergeState[field] = record.masterRecord[field] || "");
             } else {
-              fields.forEach(field => {
-                let val = "";
-                for (const name of sourceNames) {
-                  if (record.sources[name]?.[field]) {
-                    val = record.sources[name][field];
-                    break;
-                  }
-                }
-                finalMergeState[field] = val;
-              });
+                fields.forEach(field => {
+                   let val = "";
+                   for (const name of sourceNames) { if (record.sources[name]?.[field]) { val = record.sources[name][field]; break; } }
+                   finalMergeState[field] = val;
+                });
             }
         }
         renderBody();
@@ -306,8 +329,15 @@
 
       function renderBody() {
         const tbody = document.getElementById('compareTableBody');
-        tbody.innerHTML = '';
+        const thead = document.getElementById('tableHeader');
+        
+        let headerHtml = `<tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider"><th class="p-4 font-medium w-48 sticky left-0 bg-gray-50 z-10 border-r border-b">Field</th>`;
+        const colors = ['text-blue-700 bg-blue-100/50', 'text-purple-700 bg-purple-100/50', 'text-green-700 bg-green-100/50'];
+        sourceNames.forEach((name, index) => { headerHtml += `<th class="p-4 font-medium ${colors[index % colors.length]} min-w-[200px] border-b">${name}</th>`; });
+        headerHtml += `<th class="p-4 font-medium bg-gray-800 text-white min-w-[250px] sticky right-0 z-10 shadow-xl border-b">Final Merged Data</th></tr>`;
+        thead.innerHTML = headerHtml;
 
+        tbody.innerHTML = '';
         fields.forEach(field => {
           const values = sourceNames.map(name => currentRecord.sources[name]?.[field] || "");
           const nonEmpty = values.filter(v => v !== "");
@@ -316,21 +346,8 @@
           row.className = 'border-b';
           
           let cellsHtml = `<td class="p-4 font-medium text-gray-600 border-r sticky left-0 z-10 ${isIdentical ? 'bg-white' : 'bg-orange-50'}">${field}</td>`;
-
-          sourceNames.forEach(name => {
-             const val = currentRecord.sources[name]?.[field] || "";
-             cellsHtml += renderCell(field, val);
-          });
-
-          cellsHtml += `
-            <td class="p-4 border-l sticky right-0 z-10 ${isIdentical ? 'bg-white' : 'bg-orange-50'}">
-              <input type="text" 
-                id="final-${field}" 
-                value="${finalMergeState[field] || ''}" 
-                onchange="updateFinal('${field}', this.value)"
-                class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm font-medium text-gray-900 bg-white shadow-inner">
-            </td>
-          `;
+          sourceNames.forEach(name => { cellsHtml += renderCell(field, currentRecord.sources[name]?.[field] || ""); });
+          cellsHtml += `<td class="p-4 border-l sticky right-0 z-10 ${isIdentical ? 'bg-white' : 'bg-orange-50'}"><input type="text" id="final-${field}" value="${finalMergeState[field] || ''}" onchange="updateFinal('${field}', this.value)" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm font-medium text-gray-900 bg-white shadow-inner"></td>`;
           row.innerHTML = cellsHtml;
           tbody.appendChild(row);
         });
@@ -341,140 +358,117 @@
         const nonEmpty = values.filter(v => v !== "");
         const isIdentical = nonEmpty.every(v => v === nonEmpty[0]);
         const baseBg = isIdentical ? 'bg-white' : 'bg-orange-50';
-
         if(!value) return `<td class="p-4 text-gray-300 italic text-xs border-r ${baseBg}">Missing</td>`;
-        
         const isSelected = finalMergeState[field] === value;
         const safeValue = value.toString().replace(/'/g, "\\'");
-
-        return `
-          <td class="p-4 border-r cursor-pointer hover:bg-gray-100 transition relative group ${isSelected ? 'selected-cell' : baseBg}"
-              onclick="handleCellClick('${field}', '${safeValue}')">
-            <span class="block truncate max-w-[250px]" title="${value}">${value}</span>
-            <div class="hidden group-hover:flex absolute top-1 right-1 bg-white shadow rounded px-1 text-[10px] text-gray-500">Use</div>
-          </td>
-        `;
+        return `<td class="p-4 border-r cursor-pointer hover:bg-gray-100 transition relative group ${isSelected ? 'selected-cell' : baseBg}" onclick="handleCellClick('${field}', '${safeValue}')"><span class="block truncate max-w-[250px]" title="${value}">${value}</span><div class="hidden group-hover:flex absolute top-1 right-1 bg-white shadow rounded px-1 text-[10px] text-gray-500">Use</div></td>`;
       }
 
-      // --- 5. AUTO RESOLVE FEATURE ---
       function autoResolve() {
          fields.forEach(field => {
-            const counts = {};
-            let maxVal = null;
-            let maxCount = 0;
-
+            const counts = {}; let maxVal = null; let maxCount = 0;
             sourceNames.forEach(name => {
                 const val = currentRecord.sources[name]?.[field];
                 if (val && val !== "N/A" && val !== "") {
-                    const sVal = String(val);
-                    counts[sVal] = (counts[sVal] || 0) + 1;
-                    if (counts[sVal] > maxCount) {
-                        maxCount = counts[sVal];
-                        maxVal = sVal;
-                    }
+                    const sVal = String(val); counts[sVal] = (counts[sVal] || 0) + 1;
+                    if (counts[sVal] > maxCount) { maxCount = counts[sVal]; maxVal = sVal; }
                 }
             });
-
-            if (maxVal !== null) {
-                finalMergeState[field] = maxVal;
-            }
+            if (maxVal !== null) finalMergeState[field] = maxVal;
          });
-         renderBody(); 
-         showToast("Auto-resolved all fields!");
+         renderBody(); showToast("Auto-resolved all fields!");
+      }
+      
+      function resetMerge() {
+         if (!currentRecord) return;
+         delete currentRecord.manualMergeData;
+         delete currentRecord.resolvedLocally;
+         selectEmployee(currentRecord, true); 
+         filterList();
+         showToast("Reset to original state.");
+      }
+      
+      function markResolved() {
+        if (!currentRecord) return;
+        currentRecord.resolvedLocally = true;
+        currentRecord.manualMergeData = { ...finalMergeState }; 
+        filterList(); 
+        showToast("Marked as resolved locally.");
       }
 
-      // --- 6. INTERACTION & MODALS ---
+      // --- UPDATED: SAVE ALL RESOLVED (Strict Filter) ---
+      function saveAllResolved() {
+        const recordsToSave = allData.filter(d => {
+            // STRICT: Only save if record is marked as locally resolved (Blue Badge)
+            // This intentionally excludes "No Conflict" records that user hasn't approved yet.
+            return !d.masterRecord && d.resolvedLocally;
+        }).map(d => {
+            // Since we only save resolvedLocally items, manualMergeData is guaranteed to exist
+            return d.manualMergeData;
+        });
+
+        if (recordsToSave.length === 0) {
+            showToast("No 'Resolved' records found to save. Please mark records as resolved first.");
+            return;
+        }
+
+        const btn = document.getElementById('bulkSaveBtn');
+        const origText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<div class="loader w-4 h-4 border-white border-t-transparent"></div> Saving ${recordsToSave.length}...`;
+
+        google.script.run.withSuccessHandler(res => {
+            showToast(res.message);
+            loadData();
+            btn.disabled = false; btn.innerHTML = origText;
+        }).withFailureHandler(err => {
+            alert("Error: " + err.message);
+            btn.disabled = false; btn.innerHTML = origText;
+        }).saveBulkToMaster(recordsToSave);
+      }
+
       function handleCellClick(field, value) {
          if (currentRecord.masterRecord && finalMergeState[field] !== value) {
-             showConfirmation(() => {
-                 finalMergeState[field] = value;
-                 renderBody();
-             });
-         } else {
-             finalMergeState[field] = value;
-             renderBody();
-         }
+             showConfirmation(() => { finalMergeState[field] = value; renderBody(); });
+         } else { finalMergeState[field] = value; renderBody(); }
       }
-
       function updateFinal(field, value) {
          if (currentRecord.masterRecord) {
-             showConfirmation(
-                 () => { finalMergeState[field] = value; }, 
-                 () => { document.getElementById(`final-${field}`).value = finalMergeState[field]; }
-             );
-         } else {
-             finalMergeState[field] = value;
-         }
+             showConfirmation(() => { finalMergeState[field] = value; }, () => { document.getElementById(`final-${field}`).value = finalMergeState[field]; });
+         } else { finalMergeState[field] = value; }
       }
-
       function showConfirmation(onYes, onNo = () => {}) {
          const modal = document.getElementById('customModal');
-         modal.classList.remove('hidden');
-         modal.classList.add('flex');
-         modalCallback = (confirmed) => {
-             if (confirmed) onYes();
-             else onNo();
-             modal.classList.add('hidden');
-             modal.classList.remove('flex');
-         };
+         modal.classList.remove('hidden'); modal.classList.add('flex');
+         modalCallback = (confirmed) => { if (confirmed) onYes(); else onNo(); modal.classList.add('hidden'); modal.classList.remove('flex'); };
       }
-
-      function closeModal(result) {
-          if (modalCallback) modalCallback(result);
-      }
+      function closeModal(result) { if (modalCallback) modalCallback(result); }
 
       function saveMerge() {
         const btn = document.getElementById('saveBtn');
         const origText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = `<div class="loader w-4 h-4 border-white border-t-transparent"></div> Saving...`;
-
-        const onSaveComplete = (err) => {
-            if (err) showError(err);
-            btn.disabled = false;
-            btn.innerHTML = origText;
-        };
-
-        google.script.run
-          .withFailureHandler(onSaveComplete)
-          .withSuccessHandler(res => {
-            if (res.success) {
-              showToast(res.message);
-              loadData(); 
-              document.getElementById('mergeInterface').classList.add('hidden');
-              document.getElementById('emptyState').classList.remove('hidden');
-            } else {
-              onSaveComplete({ message: res.message });
-            }
-            onSaveComplete(null);
-          })
-          .saveToMaster(finalMergeState);
+        btn.disabled = true; btn.innerHTML = `<div class="loader w-4 h-4 border-white border-t-transparent"></div> Saving...`;
+        google.script.run.withSuccessHandler(res => {
+            showToast(res.message); loadData(); 
+            document.getElementById('mergeInterface').classList.add('hidden'); document.getElementById('emptyState').classList.remove('hidden');
+        }).withFailureHandler(err => { alert(err.message); btn.disabled = false; btn.innerHTML = origText; }).saveToMaster(finalMergeState);
       }
 
-      // --- HELPERS ---
       function detectGlobalConflict(item) {
         let conflict = false;
         fields.forEach(f => {
           const vals = new Set();
-          sourceNames.forEach(s => {
-            if(item.sources[s]?.[f]) vals.add(item.sources[s][f]);
-          });
+          sourceNames.forEach(s => { if(item.sources[s]?.[f]) vals.add(item.sources[s][f]); });
           if(vals.size > 1) conflict = true;
         });
         return conflict;
       }
-
       function showToast(msg) {
         const el = document.getElementById('toast');
-        el.innerText = msg;
-        el.classList.remove('translate-y-20', 'opacity-0');
+        el.innerText = msg; el.classList.remove('translate-y-20', 'opacity-0');
         setTimeout(() => { el.classList.add('translate-y-20', 'opacity-0'); }, 3000);
       }
-
-      function showError(err) {
-        alert("Error: " + err.message);
-        document.getElementById('loadingState').classList.add('hidden');
-      }
+      function showError(err) { alert("Error: " + err.message); document.getElementById('loadingState').classList.add('hidden'); }
     </script>
   </body>
 </html>
