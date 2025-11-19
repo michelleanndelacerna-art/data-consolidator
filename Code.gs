@@ -350,14 +350,34 @@ function getConsolidatedData(filters = {}) {
     const sheet = ss.getSheetByName(CONFIG.MASTER.TAB_NAME);
     if (sheet) {
       const data = sheet.getDataRange().getValues();
-      const headers = data.shift();
-      const idColIndex = headers.indexOf("Employee ID");
-      if (idColIndex !== -1) {
+      const actualHeaders = data.shift();
+      const canonicalHeaders = getMasterHeaders();
+
+      // Create a map from canonical (lowercase) header to its index in the actual sheet
+      const headerMap = {};
+      const lowerCaseActualHeaders = actualHeaders.map(h => h.toLowerCase());
+      canonicalHeaders.forEach(canonicalHeader => {
+        const index = lowerCaseActualHeaders.indexOf(canonicalHeader.toLowerCase());
+        if (index !== -1) {
+          headerMap[canonicalHeader] = index;
+        }
+      });
+
+      const idColIndex = headerMap["Employee ID"];
+
+      if (idColIndex !== undefined) {
         data.forEach(row => {
           const id = normalizeEmployeeID(row[idColIndex]);
           if (id) {
             const record = {};
-            headers.forEach((h, i) => record[h] = row[i]);
+            canonicalHeaders.forEach(h => {
+              const idx = headerMap[h];
+              if (idx !== undefined && idx < row.length) {
+                record[h] = row[idx];
+              } else {
+                record[h] = ""; // Ensure all keys exist
+              }
+            });
             masterRecords[id] = record;
           }
         });
