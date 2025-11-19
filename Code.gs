@@ -254,6 +254,74 @@ function getConsolidatedData(filters = {}) {
     sourceNames: detectedSourceNames, // Send names to frontend
     data: finalData
   };
+
+  try {
+    const jsonString = JSON.stringify(fullDataObject);
+    const blob = Utilities.newBlob(jsonString, 'text/plain', 'data.json');
+    const zippedBlob = Utilities.zip([blob]);
+    const base64String = Utilities.base64Encode(zippedBlob.getBytes());
+
+    // Prefix to identify compressed content later
+    cache.put(cacheKey, "COMPRESSED:" + base64String, 3600);
+    console.log("Data cached successfully (compressed).");
+
+  } catch(e) {
+    console.error("Could not cache data: " + e.toString());
+    // If caching fails, just return the data without caching
+  }
+
+  return filterData(fullDataObject, filters);
+}
+
+function filterData(allData, filters) {
+  let finalData = allData.data;
+  const filterKeys = Object.keys(filters).filter(key => filters[key]);
+
+  if (filterKeys.length > 0) {
+    finalData = finalData.filter(employee => {
+      return filterKeys.every(key => {
+        return Object.values(employee.sources).some(source => source[key] === filters[key]);
+      });
+    });
+  }
+
+  return {
+    headers: allData.headers,
+    sourceNames: allData.sourceNames,
+    data: finalData
+  };
+}
+
+
+function getSingleEmployee(employeeId) {
+  // This is a simplified version; in a real app, you might want to optimize this
+  // to avoid re-scanning all sheets just for one employee.
+  const allData = getConsolidatedData().data;
+  const employee = allData.find(e => e.normalizedId === employeeId);
+  return employee;
+}
+
+function getFilterOptions() {
+  const fieldsToFilter = ["Work Location", "Division", "Group", "Department", "Section"];
+  const options = {};
+
+  // This is not the most performant way for large datasets, but it's simple.
+  // A better way would be to cache these values.
+  const allData = getConsolidatedData().data;
+
+  fieldsToFilter.forEach(field => {
+    const values = new Set();
+    allData.forEach(employee => {
+      Object.values(employee.sources).forEach(source => {
+        if (source[field]) {
+          values.add(source[field]);
+        }
+      });
+    });
+    options[field] = Array.from(values).sort();
+  });
+
+  return options;
 }
 
 function getSingleEmployee(employeeId) {
@@ -331,9 +399,11 @@ function saveToMaster(record) {
         sheet.insertColumnsAfter(sheet.getMaxColumns(), rowData.length - sheet.getMaxColumns());
       }
       sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
+      CacheService.getScriptCache().remove("consolidated_data"); // Invalidate cache
       return { success: true, message: "Record Updated in Master" };
     } else {
       sheet.appendRow(rowData);
+      CacheService.getScriptCache().remove("consolidated_data"); // Invalidate cache
       return { success: true, message: "Record Added to Master" };
     }
 

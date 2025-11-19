@@ -325,9 +325,16 @@
         btn.disabled = true;
         btn.innerHTML = `<div class="loader w-4 h-4 border-white border-t-transparent"></div> Saving...`;
 
+        const onSaveComplete = (err) => {
+            if (err) showError(err);
+            btn.disabled = false;
+            btn.innerHTML = origText;
+        };
+
         google.script.run
+          .withFailureHandler(onSaveComplete)
           .withSuccessHandler(res => {
-            if(res.success) {
+            if (res.success) {
               showToast(res.message);
               // Instead of a full reload, just refresh the current user's data
               google.script.run
