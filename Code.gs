@@ -130,21 +130,70 @@ function convertArrayToConfig(rows) {
  * ==========================================
  */
 function getConsolidatedData(filters = {}) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "consolidated_data";
+  const cachedValue = cache.get(cacheKey);
+
+  if (cachedValue) {
+    console.log("Serving from cache...");
+    let jsonString;
+    try {
+      // Check if data is compressed
+      if (cachedValue.startsWith("COMPRESSED:")) {
+        const base64String = cachedValue.substring("COMPRESSED:".length);
+        const bytes = Utilities.base64Decode(base64String);
+        const blob = Utilities.newBlob(bytes, 'application/zip');
+        jsonString = Utilities.unzip(blob)[0].getDataAsString();
+      } else {
+        jsonString = cachedValue; // Backwards compatibility
+      }
+      const allData = JSON.parse(jsonString);
+      return filterData(allData, filters);
+    } catch (e) {
+      console.error("Error reading from cache, fetching fresh data. Error: " + e.toString());
+      // If cache is corrupted or in a bad state, proceed to fetch fresh data.
+    }
+  }
+
+  console.log("Fetching fresh data...");
   const columnMapping = getColumnConfig();
   const fields = Object.keys(columnMapping);
 
-  // Get a list of all IDs already in the Master DB
+  // Get all records from the Master DB to check for saved status and get master data
   const masterId = cleanId(CONFIG.MASTER.ID);
-  const savedIds = new Set();
+  const savedRecords = new Map();
   if (masterId) {
     try {
       const masterSheet = SpreadsheetApp.openById(masterId).getSheetByName(CONFIG.MASTER.TAB_NAME);
-      if (masterSheet) {
-        const idColIndex = getDefaults().hasOwnProperty("Employee ID") ? Object.keys(getDefaults()).indexOf("Employee ID") : 0;
-        masterSheet.getRange(2, idColIndex + 1, masterSheet.getLastRow(), 1).getValues()
-          .forEach(row => savedIds.add(String(row[0])));
+      if (masterSheet && masterSheet.getLastRow() > 1) {
+        const masterData = masterSheet.getDataRange().getValues();
+        const masterHeaders = masterData[0];
+        
+        // Use the existing dynamic mapping logic to robustly find columns
+        const columnIndices = mapHeadersDynamically(masterHeaders, columnMapping);
+        const idColIndex = columnIndices["Employee ID"];
+
+        if (idColIndex !== undefined) {
+          for (let i = 1; i < masterData.length; i++) {
+            const row = masterData[i];
+            const id = String(row[idColIndex]);
+            if (id) {
+              const record = {};
+              // Iterate over the app's standard fields, not the sheet's headers
+              fields.forEach(field => {
+                const idx = columnIndices[field];
+                let val = (idx !== undefined) ? row[idx] : "";
+                 if (val instanceof Date) {
+                  val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+                }
+                record[field] = val;
+              });
+              savedRecords.set(id, record);
+            }
+          }
+        }
       }
-    } catch (e) { console.error("Could not read master IDs: " + e.message); }
+    } catch (e) { console.error("Could not read master records: " + e.message); }
   }
   
   const fileSources = [
@@ -211,7 +260,8 @@ function getConsolidatedData(filters = {}) {
               key: compositeKey,
               normalizedId: cleanIdVal,
               normalizedName: normalizeText(rawName), 
-              isSaved: savedIds.has(cleanIdVal), // <-- ADDED FLAG
+              isSaved: savedRecords.has(cleanIdVal),
+              masterRecord: savedRecords.get(cleanIdVal) || null, // Attach master record
               sources: {}
             };
           }
@@ -238,21 +288,10 @@ function getConsolidatedData(filters = {}) {
 
   let finalData = Object.values(groupedData);
 
-  // Apply filters if any
-  const filterKeys = Object.keys(filters).filter(key => filters[key]);
-  if (filterKeys.length > 0) {
-    finalData = finalData.filter(employee => {
-      return filterKeys.every(key => {
-        // Check if any source for the employee matches the filter value
-        return Object.values(employee.sources).some(source => source[key] === filters[key]);
-      });
-    });
-  }
-
-  return {
+  const fullDataObject = {
     headers: fields,
-    sourceNames: detectedSourceNames, // Send names to frontend
-    data: finalData
+    sourceNames: detectedSourceNames,
+    data: Object.values(groupedData)
   };
 
   try {
@@ -260,9 +299,9 @@ function getConsolidatedData(filters = {}) {
     const blob = Utilities.newBlob(jsonString, 'text/plain', 'data.json');
     const zippedBlob = Utilities.zip([blob]);
     const base64String = Utilities.base64Encode(zippedBlob.getBytes());
-
+    
     // Prefix to identify compressed content later
-    cache.put(cacheKey, "COMPRESSED:" + base64String, 3600);
+    cache.put(cacheKey, "COMPRESSED:" + base64String, 3600); 
     console.log("Data cached successfully (compressed).");
 
   } catch(e) {
@@ -292,37 +331,6 @@ function filterData(allData, filters) {
   };
 }
 
-
-function getSingleEmployee(employeeId) {
-  // This is a simplified version; in a real app, you might want to optimize this
-  // to avoid re-scanning all sheets just for one employee.
-  const allData = getConsolidatedData().data;
-  const employee = allData.find(e => e.normalizedId === employeeId);
-  return employee;
-}
-
-function getFilterOptions() {
-  const fieldsToFilter = ["Work Location", "Division", "Group", "Department", "Section"];
-  const options = {};
-
-  // This is not the most performant way for large datasets, but it's simple.
-  // A better way would be to cache these values.
-  const allData = getConsolidatedData().data;
-
-  fieldsToFilter.forEach(field => {
-    const values = new Set();
-    allData.forEach(employee => {
-      Object.values(employee.sources).forEach(source => {
-        if (source[field]) {
-          values.add(source[field]);
-        }
-      });
-    });
-    options[field] = Array.from(values).sort();
-  });
-
-  return options;
-}
 
 function getSingleEmployee(employeeId) {
   // This is a simplified version; in a real app, you might want to optimize this
