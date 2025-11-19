@@ -62,7 +62,7 @@
           </div>
 
           <div class="bg-white rounded-xl shadow-sm overflow-x-auto border">
-            <table class="w-full text-left border-collapse min-w-[800px]">
+            <table class="w-full text-left min-w-[800px] border-separate border-spacing-0">
               <thead id="tableHeader">
                 </thead>
               <tbody id="compareTableBody" class="text-sm divide-y">
@@ -129,7 +129,7 @@
           
           const card = document.createElement('div');
           card.className = `p-3 rounded border cursor-pointer hover:bg-blue-50 transition group bg-white border-l-4 ${hasConflict ? 'border-l-orange-400' : 'border-l-green-400'}`;
-          card.onclick = () => selectEmployee(item);
+          card.onclick = () => selectEmployee(item, true); // Pass true for initial selection
           
           card.innerHTML = `
             <div class="flex justify-between items-start">
@@ -161,7 +161,7 @@
         renderList(filtered);
       }
 
-      function selectEmployee(record) {
+      function selectEmployee(record, isInitialSelection = false) {
         currentRecord = record;
         
         document.getElementById('emptyState').classList.add('hidden');
@@ -171,36 +171,38 @@
 
         // 1. Build Dynamic Header based on Source Files
         const thead = document.getElementById('tableHeader');
-        let headerHtml = `<tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b">
-                            <th class="p-4 font-medium w-48 sticky left-0 bg-gray-50 z-10 border-r">Field</th>`;
+        let headerHtml = `<tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
+                            <th class="p-4 font-medium w-48 sticky left-0 bg-gray-50 z-10 border-r border-b">Field</th>`;
         
         // Colors for columns
-        const colors = ['text-blue-700 bg-blue-50/50', 'text-purple-700 bg-purple-50/50', 'text-green-700 bg-green-50/50'];
+        const colors = ['text-blue-700 bg-blue-100/50', 'text-purple-700 bg-purple-100/50', 'text-green-700 bg-green-100/50'];
 
         sourceNames.forEach((name, index) => {
           const colorClass = colors[index % colors.length];
-          headerHtml += `<th class="p-4 font-medium ${colorClass} min-w-[200px]">${name}</th>`;
+          headerHtml += `<th class="p-4 font-medium ${colorClass} min-w-[200px] border-b">${name}</th>`;
         });
 
-        headerHtml += `<th class="p-4 font-medium bg-gray-800 text-white min-w-[250px] sticky right-0 z-10 shadow-xl">Final Merged Data</th></tr>`;
+        headerHtml += `<th class="p-4 font-medium bg-gray-800 text-white min-w-[250px] sticky right-0 z-10 shadow-xl border-b">Final Merged Data</th></tr>`;
         thead.innerHTML = headerHtml;
 
         // 2. Build Body
         const tbody = document.getElementById('compareTableBody');
         tbody.innerHTML = '';
 
-        // Smart Defaults Logic
-        fields.forEach(field => {
-          // Find first non-empty value from sources in order
-          let val = "";
-          for (const name of sourceNames) {
-            if (record.sources[name]?.[field]) {
-              val = record.sources[name][field];
-              break;
-            }
-          }
-          finalMergeState[field] = val;
-        });
+        // Smart Defaults Logic - only on first load
+        if (isInitialSelection) {
+            fields.forEach(field => {
+              // Find first non-empty value from sources in order
+              let val = "";
+              for (const name of sourceNames) {
+                if (record.sources[name]?.[field]) {
+                  val = record.sources[name][field];
+                  break;
+                }
+              }
+              finalMergeState[field] = val;
+            });
+        }
 
         fields.forEach(field => {
           // Check Conflict
@@ -209,9 +211,9 @@
           const isIdentical = nonEmpty.every(v => v === nonEmpty[0]);
 
           const row = document.createElement('tr');
-          row.className = isIdentical ? "" : "bg-orange-50/30"; 
+          row.className = 'border-b';
 
-          let cellsHtml = `<td class="p-4 font-medium text-gray-600 border-r sticky left-0 bg-white z-10">${field}</td>`;
+          let cellsHtml = `<td class="p-4 font-medium text-gray-600 border-r sticky left-0 z-10 ${isIdentical ? 'bg-white' : 'bg-orange-50'}">${field}</td>`;
 
           // Render Cells for each Source
           sourceNames.forEach(name => {
@@ -221,7 +223,7 @@
 
           // Render Final Input
           cellsHtml += `
-            <td class="p-4 border-l bg-gray-800/5 sticky right-0 z-10 bg-gray-50">
+            <td class="p-4 border-l sticky right-0 z-10 ${isIdentical ? 'bg-white' : 'bg-orange-50'}">
               <input type="text" 
                 id="final-${field}" 
                 value="${finalMergeState[field] || ''}" 
@@ -236,13 +238,19 @@
       }
 
       function renderCell(field, value) {
-        if(!value) return `<td class="p-4 text-gray-300 italic text-xs border-r">Missing</td>`;
+        const values = sourceNames.map(name => currentRecord.sources[name]?.[field] || "");
+        const nonEmpty = values.filter(v => v !== "");
+        const isIdentical = nonEmpty.every(v => v === nonEmpty[0]);
+
+        const baseBg = isIdentical ? 'bg-white' : 'bg-orange-50';
+
+        if(!value) return `<td class="p-4 text-gray-300 italic text-xs border-r ${baseBg}">Missing</td>`;
         
         const isSelected = finalMergeState[field] === value;
         const safeValue = value.toString().replace(/'/g, "\\'");
 
         return `
-          <td class="p-4 border-r cursor-pointer hover:bg-gray-100 transition relative group ${isSelected ? 'selected-cell' : ''}"
+          <td class="p-4 border-r cursor-pointer hover:bg-gray-100 transition relative group ${isSelected ? 'selected-cell' : baseBg}"
               onclick="selectValue('${field}', '${safeValue}')">
             <span class="block truncate max-w-[250px]" title="${value}">${value}</span>
             <div class="hidden group-hover:flex absolute top-1 right-1 bg-white shadow rounded px-1 text-[10px] text-gray-500">Use</div>
@@ -257,7 +265,7 @@
         // Manually toggle classes to avoid full re-render (Performance)
         const rows = document.getElementById('compareTableBody').children;
         // (Simplification: We re-render for now to keep code clean, but in massive tables, toggle class is better)
-        selectEmployee(currentRecord); 
+        selectEmployee(currentRecord, false); // Pass false to prevent resetting defaults
       }
 
       function updateFinal(field, value) {
