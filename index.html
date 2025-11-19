@@ -247,7 +247,6 @@
 
           const row = document.createElement('tr');
           row.className = 'border-b';
-
           
           let cellsHtml = `<td class="p-4 font-medium text-gray-600 border-r sticky left-0 z-10 ${isIdentical ? 'bg-white' : 'bg-orange-50'}">${field}</td>`;
 
@@ -336,10 +335,10 @@
                     // Update the record in the main list
                     const index = allData.findIndex(e => e.normalizedId === updatedEmployee.normalizedId);
                     if (index !== -1) allData[index] = updatedEmployee;
-
+                    
                     renderList(allData); // Re-render the list to show the 'Saved' badge
                     selectEmployee(updatedEmployee, false); // Re-select the employee to refresh the view
-
+                    
                     btn.disabled = false;
                     btn.innerHTML = origText;
                 })
