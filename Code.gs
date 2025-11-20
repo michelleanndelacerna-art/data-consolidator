@@ -19,7 +19,15 @@ const CONFIG = {
       { NAME: "HR FIELDS", DATA_START_ROW: 2, MAP: { "Employee ID": "B", "Active": "P", "Employment Type": "O", "Company Name": "C", "Division": "D", "Group": "E", "Department": "F", "Section": "G", "Work Location": "H", "Position": "AI", "Superior ID": "U", "Superior Name": "V", "Date Hired": "W", "Date Resigned": "Q", "Reason for Leaving": "S" } }
     ]
   },
-  MASTER: { ID: "1Ll9L8D7rkze9vQVgFxs48besFwBiStz0eAIEUPrpTAY", TAB_NAME: "MasterDatabase" }
+  MASTER: { ID: "1Ll9L8D7rkze9vQVgFxs48besFwBiStz0eAIEUPrpTAY", TAB_NAME: "MasterDatabase", LOG_TAB: "Logs" }
+};
+
+const HEADER_ALIASES = {
+  "LAST NAME": ["SURNAME", "FAMILY NAME", "LASTNAME", "LNAME", "L.NAME"],
+  "FIRST NAME": ["GIVEN NAME", "FIRSTNAME", "FNAME", "F.NAME"],
+  "MIDDLE NAME": ["MIDDLE", "MIDDLENAME", "M.I.", "MI", "MNAME"],
+  "SUFFIX": ["EXTENSION", "EXT", "NAME EXTENSION"],
+  "EMPLOYEE ID": ["EMP ID", "ID", "EMPLOYEE NO", "EMPLOYEE #", "EMP NO"]
 };
 
 function doGet() {
@@ -30,16 +38,11 @@ function getMasterHeaders() {
   return ["Employee ID", "Full Name", "Last Name", "First Name", "Middle Name", "Suffix", "Nickname", "Gender", "Date of Birth", "Civil Status", "Active", "Employment Type", "Company Name", "Division", "Group", "Department", "Section", "Work Location", "Position", "Job Group", "Superior ID", "Superior Name", "Date Hired", "Date Regular", "Date Resigned", "Reason for Leaving"];
 }
 
-/**
- * ==========================================
- * FETCH DATA (Updated for Source URLs)
- * ==========================================
- */
 function _fetchRawDataFromSources() {
   const fields = getMasterHeaders();
   const sources = [{key:'SHEET_1',config:CONFIG.SHEET_1},{key:'SHEET_2',config:CONFIG.SHEET_2},{key:'SHEET_3',config:CONFIG.SHEET_3}];
   let groupedData = {};
-  let detectedSourceNames = []; // Now stores Objects: { name, url }
+  let detectedSourceNames = [];
 
   sources.forEach(sourceObj => {
     const sheetConfig = sourceObj.config;
@@ -47,9 +50,8 @@ function _fetchRawDataFromSources() {
     try {
       const ss = SpreadsheetApp.openById(cleanId(sheetConfig.ID));
       const fileName = ss.getName();
-      const fileUrl = ss.getUrl(); // Capture URL
+      const fileUrl = ss.getUrl(); 
       
-      // Add to sources list if new
       if (!detectedSourceNames.some(s => s.name === fileName)) {
          detectedSourceNames.push({ name: fileName, url: fileUrl });
       }
@@ -58,12 +60,13 @@ function _fetchRawDataFromSources() {
         const sheet = ss.getSheetByName(tabConfig.NAME);
         if (!sheet) return;
         
-        // Dynamic Header Search
         const headerRowIdx = Math.max(0, tabConfig.DATA_START_ROW - 2);
         const allValues = sheet.getDataRange().getValues();
         const headerMap = {};
         if (allValues.length > headerRowIdx) {
-            allValues[headerRowIdx].forEach((h, i) => { if (h) headerMap[String(h).trim().toUpperCase()] = i; });
+            allValues[headerRowIdx].forEach((h, i) => { 
+                if (h) headerMap[String(h).trim().toUpperCase()] = i; 
+            });
         }
 
         const startRow = tabConfig.DATA_START_ROW - 1;
@@ -74,7 +77,13 @@ function _fetchRawDataFromSources() {
           if (row.every(c => c === "")) continue;
 
           const getVal = (fieldName) => {
-            let colIndex = headerMap[fieldName.toUpperCase()];
+            const key = fieldName.toUpperCase();
+            let colIndex = headerMap[key];
+            if (colIndex === undefined && HEADER_ALIASES[key]) {
+                for (const alias of HEADER_ALIASES[key]) {
+                    if (headerMap[alias] !== undefined) { colIndex = headerMap[alias]; break; }
+                }
+            }
             if (colIndex === undefined) {
                  const colLetter = tabConfig.MAP[fieldName];
                  if (colLetter) colIndex = letterToColumn(colLetter) - 1;
@@ -88,12 +97,25 @@ function _fetchRawDataFromSources() {
 
           let rawName = getVal("Full Name");
           if (!rawName) {
-            const last = getVal("Last Name"), first = getVal("First Name"), mid = getVal("Middle Name"), suffix = getVal("Suffix");
-            if (last || first) rawName = `${last}, ${first} ${mid} ${suffix}`.replace(/\s+/g, ' ').trim().replace(/^,|,$/g, '').trim();
+            const last = getVal("Last Name");
+            const first = getVal("First Name");
+            const mid = getVal("Middle Name");
+            const suffix = getVal("Suffix");
+            if (last || first) {
+                 rawName = `${last}, ${first} ${mid} ${suffix}`.replace(/\s+/g, ' ').trim();
+                 if (rawName.startsWith(",")) rawName = rawName.substring(1).trim();
+                 if (rawName.endsWith(",")) rawName = rawName.substring(0, rawName.length - 1).trim();
+            }
           }
 
           if (!groupedData[cleanIdVal]) {
-            groupedData[cleanIdVal] = { key: cleanIdVal, normalizedId: cleanIdVal, normalizedName: String(rawName || "").toUpperCase(), sources: {} };
+            groupedData[cleanIdVal] = { 
+                key: cleanIdVal, 
+                normalizedId: cleanIdVal, 
+                normalizedName: String(rawName || "").toUpperCase(), 
+                sources: {},
+                originalIds: [cleanIdVal] 
+            };
           } else if ((!groupedData[cleanIdVal].normalizedName || groupedData[cleanIdVal].normalizedName === "") && rawName) {
             groupedData[cleanIdVal].normalizedName = String(rawName).toUpperCase();
           }
@@ -106,8 +128,13 @@ function _fetchRawDataFromSources() {
               const keepBlank = ["Date Resigned", "Reason for Leaving", "Date Hired", "Last Name", "First Name", "Middle Name", "Suffix", "Date of Birth"];
               if (!keepBlank.includes(field) && (val === "" || val === null || val === undefined)) val = "N/A";
             }
-            if (val instanceof Date) val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
-            else val = String(val ?? "").trim();
+            
+            // --- CRITICAL FIX: Force String Conversion to prevent filter errors ---
+            if (val instanceof Date) {
+                val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+            } else {
+                val = String(val ?? "").trim(); 
+            }
             sourceRecord[field] = val;
           });
 
@@ -124,15 +151,69 @@ function _fetchRawDataFromSources() {
       });
     } catch (e) { console.error(`Error processing ${sourceObj.key}: ${e.message}`); }
   });
+
+  let recordList = Object.values(groupedData);
+  recordList.sort((a, b) => a.normalizedName.localeCompare(b.normalizedName));
+
+  const mergedData = {};
+  const skipIds = new Set();
+
+  for (let i = 0; i < recordList.length; i++) {
+      if (skipIds.has(recordList[i].key)) continue;
+
+      let current = recordList[i];
+      for (let j = i + 1; j < recordList.length; j++) {
+          let next = recordList[j];
+          if (next.normalizedName[0] !== current.normalizedName[0]) break; 
+          const dist = getLevenshteinDistance(current.normalizedName, next.normalizedName);
+          if (dist <= 3 && current.key !== next.key) {
+              console.log(`Auto-Merging: ${current.normalizedName} with ${next.normalizedName}`);
+              for (const [srcName, srcData] of Object.entries(next.sources)) {
+                  if (!current.sources[srcName]) {
+                      current.sources[srcName] = srcData;
+                  } else {
+                      fields.forEach(f => {
+                          const val = srcData[f];
+                          if (val && val !== "N/A" && (!current.sources[srcName][f] || current.sources[srcName][f] === "N/A")) {
+                              current.sources[srcName][f] = val;
+                          }
+                      });
+                  }
+              }
+              current.originalIds.push(next.key);
+              skipIds.add(next.key); 
+          }
+      }
+      mergedData[current.key] = current;
+  }
+
+  groupedData = mergedData;
   return { groupedData, detectedSourceNames };
+}
+
+function getLevenshteinDistance(s1, s2) {
+  if (s1.length === 0) return s2.length;
+  if (s2.length === 0) return s1.length;
+  const matrix = [];
+  for (let i = 0; i <= s2.length; i++) { matrix[i] = [i]; }
+  for (let j = 0; j <= s1.length; j++) { matrix[0][j] = j; }
+  for (let i = 1; i <= s2.length; i++) {
+    for (let j = 1; j <= s1.length; j++) {
+      if (s2.charAt(i - 1) === s1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
+      }
+    }
+  }
+  return matrix[s2.length][s1.length];
 }
 
 function getConsolidatedData(filters = {}) {
   const fields = getMasterHeaders();
   const cache = CacheService.getScriptCache();
-  // v9 Cache Key
-  const cacheKeyMeta = 'consolidated_data_v9_urls';
-  const cacheKeyChunkPrefix = 'consolidated_data_v9_chunk_';
+  const cacheKeyMeta = 'consolidated_data_v13_fix'; // CACHE KEY UPDATED
+  const cacheKeyChunkPrefix = 'consolidated_data_v13_chunk_';
   const CHUNK_SIZE = 90000; 
 
   let groupedData, detectedSourceNames;
@@ -230,7 +311,7 @@ function getConsolidatedData(filters = {}) {
 
 function getFilterOptions() {
   const cache = CacheService.getScriptCache();
-  const cacheKey = 'filter_options_v9_urls';
+  const cacheKey = 'filter_options_v13_fix';
   const cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
@@ -319,16 +400,32 @@ function saveBulkToMaster(records) {
        const rowData = fields.map(f => record[f] || "");
        if (idMap.has(id)) { data[idMap.get(id)] = rowData; updated++; }
        else { newRows.push(rowData); added++; }
+       
+       const logMsg = `Action: ${idMap.has(id) ? 'UPDATE' : 'CREATE'} - ${record[fields[1]]}`;
+       logChange(ss, idMap.has(id) ? "UPDATE" : "CREATE", id, logMsg);
     });
 
     if (updated > 0) sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
     if (newRows.length > 0) sheet.getRange(data.length + 1, 1, newRows.length, newRows[0].length).setValues(newRows);
-
+    
     const cache = CacheService.getScriptCache();
-    const keys = ['consolidated_data_v9_urls', 'filter_options_v9_urls'];
+    const keys = ['consolidated_data_v13_fix', 'filter_options_v13_fix'];
     cache.removeAll(keys);
     return { success: true, message: `Bulk Saved: ${updated} Updated, ${added} Added.` };
   } catch (e) { return { success: false, message: e.toString() }; } finally { lock.releaseLock(); }
+}
+
+function logChange(ss, action, id, details) {
+  try {
+    let logSheet = ss.getSheetByName(CONFIG.MASTER.LOG_TAB);
+    if (!logSheet) {
+      logSheet = ss.insertSheet(CONFIG.MASTER.LOG_TAB);
+      logSheet.appendRow(["Timestamp", "User", "Action", "Employee ID", "Details"]);
+      logSheet.getRange(1, 1, 1, 5).setFontWeight("bold");
+    }
+    const user = Session.getActiveUser().getEmail() || "Unknown";
+    logSheet.appendRow([new Date(), user, action, id, details]);
+  } catch(e) { console.error("Logging failed", e); }
 }
 
 function letterToColumn(letter) {
