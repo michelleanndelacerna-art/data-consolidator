@@ -6,10 +6,27 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
-      .selected-cell { background-color: #dbeafe; font-weight: 600; } 
-      .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
-      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      /* Selected Cell Style */
+      .selected-cell { 
+        background-color: #dbeafe; 
+        font-weight: 600; 
+      } 
+
+      /* Loading Spinner */
+      .loader { 
+        border: 4px solid #f3f3f3; 
+        border-top: 4px solid #3498db; 
+        border-radius: 50%; 
+        width: 30px; 
+        height: 30px; 
+        animation: spin 1s linear infinite; 
+      }
+      @keyframes spin { 
+        0% { transform: rotate(0deg); } 
+        100% { transform: rotate(360deg); } 
+      }
       
+      /* Custom Scrollbars */
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       
@@ -18,16 +35,17 @@
       .thin-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
       .thin-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #94a3b8; }
 
+      /* Dropdown Animation */
       .dropdown-enter { opacity: 0; transform: scaleY(0.95); }
       .dropdown-enter-active { opacity: 1; transform: scaleY(1); transition: opacity 0.1s, transform 0.1s; }
       
       .search-input:focus + .search-icon { color: #2563eb; }
-
-      /* FORCE RED HIGHLIGHT CLASS */
-      .highlight-error {
-          background-color: #fee2e2 !important; /* Red-100 */
-          border: 1px solid #ef4444 !important; /* Red-500 */
-          color: #7f1d1d !important;            /* Red-900 */
+      
+      /* Highlight Error Class */
+      .highlight-error { 
+        background-color: #fee2e2 !important; 
+        border: 1px solid #ef4444 !important; 
+        color: #7f1d1d !important; 
       }
     </style>
   </head>
@@ -40,7 +58,7 @@
         </div>
         <div>
             <h1 class="text-xl font-bold text-gray-700">Data Consolidator</h1>
-            <p id="lastUpdated" class="text-[10px] text-gray-400 font-medium">Waiting for data...</p>
+            <p id="lastUpdated" class="text-[10px] text-gray-400 font-medium">Waiting...</p>
         </div>
       </div>
       <div class="flex gap-2">
@@ -58,9 +76,14 @@
       <aside class="w-1/3 min-w-[350px] bg-white border-r flex flex-col z-0 relative">
         <div class="p-4 border-b bg-gray-50">
           
-          <button onclick="resetView()" class="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-bold uppercase tracking-wider transition mb-4 flex items-center justify-center gap-2 border border-gray-200">
-            <i class="ph ph-arrow-counter-clockwise"></i> Reset View / Clear All
-          </button>
+          <div class="flex gap-2 mb-4">
+             <button onclick="resetView()" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 border border-gray-200">
+                <i class="ph ph-arrow-counter-clockwise"></i> Reset
+             </button>
+             <button onclick="openBulkFixModal()" class="flex-1 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 border border-purple-200">
+                <i class="ph ph-wrench"></i> Bulk Fix
+             </button>
+          </div>
 
           <div class="mb-4">
             <div class="flex justify-between text-xs mb-1.5">
@@ -96,12 +119,14 @@
               <input type="checkbox" id="hideSavedCheckbox" onchange="filterList()" class="rounded text-blue-600 focus:ring-blue-500">
               <span class="truncate">Hide Saved</span>
             </label>
-            
             <label class="flex items-center gap-1 text-xs text-blue-600 cursor-pointer select-none hover:text-blue-700 transition font-medium">
               <input type="checkbox" id="showSavedOnlyCheckbox" onchange="filterList()" class="rounded text-blue-500 focus:ring-blue-500">
               <span class="truncate">Saved Only</span>
             </label>
-
+            <label class="flex items-center gap-1 text-xs text-teal-600 cursor-pointer select-none hover:text-teal-700 transition font-medium">
+              <input type="checkbox" id="showCleanCheckbox" onchange="filterList()" class="rounded text-teal-500 focus:ring-teal-500">
+              <span class="truncate">No Conflicts</span>
+            </label>
             <label class="flex items-center gap-1 text-xs text-orange-600 cursor-pointer select-none hover:text-orange-700 transition font-medium">
               <input type="checkbox" id="showConflictsCheckbox" onchange="filterList()" class="rounded text-orange-500 focus:ring-orange-500">
               <span class="truncate">Conflicts</span>
@@ -110,9 +135,9 @@
               <input type="checkbox" id="showResolvedCheckbox" onchange="filterList()" class="rounded text-green-500 focus:ring-green-500">
               <span class="truncate">Resolved</span>
             </label>
-            <label class="flex items-center gap-1 text-xs text-red-600 cursor-pointer select-none hover:text-red-700 transition font-medium col-span-2">
+            <label class="flex items-center gap-1 text-xs text-red-600 cursor-pointer select-none hover:text-red-700 transition font-medium">
               <input type="checkbox" id="highlightMissingCheckbox" onchange="toggleHighlight()" class="rounded text-red-500 focus:ring-red-500">
-              <span class="truncate">Highlight Missing</span>
+              <span class="truncate">Missing Data</span>
             </label>
           </div>
         </div>
@@ -129,7 +154,6 @@
           <div class="loader mb-4"></div>
           <p class="text-gray-500 text-sm">Scanning Sheets...</p>
         </div>
-
         <div id="employeeList" class="flex-1 overflow-y-auto p-2 space-y-2 bg-gray-50/50 z-0" onscroll="closeGlobalDropdown()"></div>
         
         <div id="paginationControls" class="p-3 border-t bg-white flex justify-between items-center text-xs hidden z-10">
@@ -166,9 +190,14 @@
                   </select>
                   <i class="ph ph-funnel absolute right-2.5 top-2.5 text-gray-400 pointer-events-none"></i>
                </div>
+               
                <div class="h-6 w-px bg-gray-300 mx-1 hidden sm:block"></div>
 
-               <button onclick="resetMerge()" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg transition flex items-center gap-2" title="Reset all changes">
+               <button onclick="viewHistory()" class="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-semibold rounded-lg transition flex items-center gap-2" title="View Audit Logs">
+                 <i class="ph ph-clock-counter-clockwise"></i> History
+               </button>
+
+               <button onclick="resetMerge()" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-lg transition flex items-center gap-2">
                  <i class="ph ph-arrow-counter-clockwise"></i>
                </button>
                <button onclick="markResolved()" class="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 text-sm font-semibold rounded-lg transition flex items-center gap-2" title="Mark as locally resolved">
@@ -200,9 +229,47 @@
     </div>
 
     <div id="globalDropdown" class="hidden fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto w-[200px]"></div>
+    
     <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white px-6 py-3 rounded shadow-lg transform translate-y-20 transition duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-4">
         <span id="toastMsg">Action Completed</span>
         <button id="toastUndoBtn" class="hidden text-yellow-400 hover:text-yellow-300 font-bold text-xs uppercase tracking-wider" onclick="undoLastAction()">UNDO</button>
+    </div>
+
+    <div id="bulkFixModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 transform transition-all scale-95">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><i class="ph ph-wrench text-purple-600"></i> Bulk Find & Replace</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Target Field</label>
+                    <select id="bulkField" class="w-full p-2 border rounded text-sm"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Find text</label>
+                    <input type="text" id="bulkFind" class="w-full p-2 border rounded text-sm" placeholder="e.g. I.T.">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Replace with</label>
+                    <input type="text" id="bulkReplace" class="w-full p-2 border rounded text-sm" placeholder="e.g. Information Technology">
+                </div>
+                <p class="text-xs text-gray-400 italic mt-2">This will update ALL visible records in the current list.</p>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button onclick="document.getElementById('bulkFixModal').classList.add('hidden')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition">Cancel</button>
+                <button onclick="applyBulkFix()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition">Apply Fix</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="historyModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-lg w-full mx-4 transform transition-all scale-95 h-[500px] flex flex-col">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><i class="ph ph-clock-counter-clockwise text-blue-600"></i> Audit History</h3>
+            <div id="historyContent" class="flex-1 overflow-y-auto space-y-2 border-t border-b py-2">
+                <div class="text-center text-gray-400 mt-10">Loading...</div>
+            </div>
+            <div class="flex justify-end mt-4">
+                <button onclick="document.getElementById('historyModal').classList.add('hidden')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition">Close</button>
+            </div>
+        </div>
     </div>
 
     <div id="customModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
@@ -220,6 +287,7 @@
     </div>
 
     <script>
+      // --- GLOBAL STATE ---
       let allData = [];
       let filteredData = [];
       let fields = [];
@@ -229,16 +297,15 @@
       let currentFilters = {};
       let fullFilterOptions = null;
       let modalCallback = null;
-      let activeFilterField = null; 
+      let activeFilterField = null;
       let highlightMissingMode = false;
       let currentPage = 1;
       const itemsPerPage = 20;
-
-      // UNDO STATE
+      
       let lastActionState = null;
 
-      const CACHE_KEY_DATA = 'dc_all_data_v3';
-      const CACHE_KEY_FILTERS = 'dc_filters_v3';
+      const CACHE_KEY_DATA = 'dc_all_data_v4';
+      const CACHE_KEY_FILTERS = 'dc_filters_v4';
       const CACHE_KEY_TIME = 'dc_last_updated';
 
       const FIELD_GROUPS = {
@@ -247,10 +314,9 @@
           status: ["Active", "Employment Type", "Date Hired", "Date Regular", "Date Resigned", "Reason for Leaving"]
       };
 
-      window.onload = () => { 
-          if(!loadFromCache()) { loadData(true); }
-      };
+      window.onload = () => { if(!loadFromCache()) loadData(true); };
 
+      // --- DATA LOADING & CACHING ---
       function loadFromCache() {
           try {
               const localData = localStorage.getItem(CACHE_KEY_DATA);
@@ -317,6 +383,7 @@
         document.getElementById('progressBar').style.width = `${percent}%`;
       }
 
+      // --- FILTERS & DROPDOWNS ---
       function renderFilterInputs() {
         const container = document.getElementById('filterContainer');
         container.innerHTML = ''; 
@@ -419,6 +486,7 @@
           document.getElementById('showConflictsCheckbox').checked = false;
           document.getElementById('showResolvedCheckbox').checked = false;
           document.getElementById('highlightMissingCheckbox').checked = false;
+          document.getElementById('showCleanCheckbox').checked = false;
           highlightMissingMode = false;
           currentFilters = {};
           renderFilterInputs(); 
@@ -440,6 +508,7 @@
         const showSavedOnly = document.getElementById('showSavedOnlyCheckbox').checked; 
         const showConflicts = document.getElementById('showConflictsCheckbox').checked; 
         const showResolved = document.getElementById('showResolvedCheckbox').checked; 
+        const showClean = document.getElementById('showCleanCheckbox').checked;
         const sortBy = document.getElementById('sortBy').value;
 
         filteredData = allData.filter(d => {
@@ -447,8 +516,14 @@
           if (!matchesSearch) return false;
           if (hideSaved && d.masterRecord) return false;
           if (showSavedOnly && !d.masterRecord) return false;
-          if (showConflicts) { if (!detectGlobalConflict(d) || d.resolvedLocally) return false; }
-          if (showResolved && !d.resolvedLocally) return false;
+          
+          const hasConflict = detectGlobalConflict(d);
+          const isResolved = d.resolvedLocally;
+
+          if (showConflicts) { if (!hasConflict || isResolved) return false; }
+          if (showResolved) { if (!isResolved) return false; }
+          if (showClean) { if (hasConflict || isResolved || d.masterRecord) return false; }
+
           for (const [key, filterVal] of Object.entries(currentFilters)) {
              if (filterVal) {
                  let match = false;
@@ -587,16 +662,16 @@
           
           const finalVal = finalMergeState[field] || '';
           
-          // --- HIGHLIGHT FIX LOGIC ---
+          // --- INLINE STYLE FIX FOR HIGHLIGHT ---
           const isMissing = highlightMissingMode && (!finalVal || String(finalVal).trim() === '' || finalVal === 'N/A');
+          const styleAttr = isMissing ? 'background-color: #fee2e2 !important; border: 2px solid #ef4444 !important; color: #7f1d1d !important;' : '';
           
-          // Determine class (Standard White vs Highlight Error)
-          const inputClass = isMissing 
-              ? 'highlight-error' 
-              : 'bg-white border-gray-300 focus:ring-blue-500 text-gray-900';
+          // Remove bg-white if missing
+          const inputClass = isMissing ? '' : 'bg-white border-gray-300 focus:ring-blue-500 text-gray-900';
 
           cellsHtml += `<td class="p-2 border-l sticky right-0 z-10 ${isIdentical ? 'bg-white' : 'bg-orange-50'} h-16 align-top">
                           <textarea id="final-${field}" rows="3" oninput="updateFinal('${field}', this.value)" 
+                              style="${styleAttr}"
                               class="w-full p-2 border rounded text-xs font-medium shadow-inner thin-scrollbar resize-none ${inputClass}">${finalVal}</textarea>
                         </td>`;
           row.innerHTML = cellsHtml;
@@ -609,18 +684,72 @@
         const nonEmpty = values.filter(v => v !== "");
         const isIdentical = nonEmpty.every(v => v === nonEmpty[0]);
         const baseBg = isIdentical ? 'bg-white' : 'bg-orange-50';
-        
         if(!value) return `<td class="p-2 text-gray-300 italic text-xs border-r ${baseBg} h-16 align-top">Missing</td>`;
-        
         const isSelected = finalMergeState[field] === value;
         const safeValue = value.toString().replace(/'/g, "\\'");
-        
-        return `<td class="p-2 border-r cursor-pointer hover:bg-gray-100 transition relative group ${isSelected ? 'selected-cell' : baseBg} h-16 align-top" onclick="handleCellClick('${field}', '${safeValue}')">
-                  <div class="w-full h-full max-h-[3.5rem] overflow-y-auto whitespace-normal break-words text-xs leading-tight thin-scrollbar" title="${value}">
-                    ${value}
-                  </div>
-                  <div class="hidden group-hover:flex absolute top-1 right-1 bg-white shadow rounded px-1 text-[10px] text-gray-500">Use</div>
-                </td>`;
+        return `<td class="p-2 border-r cursor-pointer hover:bg-gray-100 transition relative group ${isSelected ? 'selected-cell' : baseBg} h-16 align-top" onclick="handleCellClick('${field}', '${safeValue}')"><div class="w-full h-full max-h-[3.5rem] overflow-y-auto whitespace-normal break-words text-xs leading-tight thin-scrollbar" title="${value}">${value}</div><div class="hidden group-hover:flex absolute top-1 right-1 bg-white shadow rounded px-1 text-[10px] text-gray-500">Use</div></td>`;
+      }
+
+      // --- VIEW HISTORY ---
+      function viewHistory() {
+          if(!currentRecord) return;
+          const modal = document.getElementById('historyModal');
+          const content = document.getElementById('historyContent');
+          modal.classList.remove('hidden'); modal.classList.add('flex');
+          content.innerHTML = '<div class="text-center text-gray-400 p-4">Loading history...</div>';
+          google.script.run.withSuccessHandler(logs => {
+              if(logs.length === 0) { content.innerHTML = '<div class="text-center text-gray-400 p-4">No history found.</div>'; return; }
+              let html = '';
+              logs.forEach(log => {
+                  html += `<div class="text-xs p-3 border-b border-gray-100 last:border-0"><div class="flex justify-between mb-1"><span class="font-bold text-gray-700">${log.action}</span><span class="text-gray-400">${new Date(log.timestamp).toLocaleString()}</span></div><div class="text-gray-600 mb-1">${log.details}</div><div class="text-[10px] text-gray-400">By: ${log.user}</div></div>`;
+              });
+              content.innerHTML = html;
+          }).withFailureHandler(err => { content.innerHTML = `<div class="text-red-500 p-4">Error: ${err.message}</div>`; }).getEmployeeLogs(currentRecord.normalizedId);
+      }
+      
+      // --- BULK FIX ---
+      function openBulkFixModal() {
+          const sel = document.getElementById('bulkField');
+          sel.innerHTML = fields.map(f => `<option value="${f}">${f}</option>`).join('');
+          document.getElementById('bulkFixModal').classList.remove('hidden');
+          document.getElementById('bulkFixModal').classList.add('flex');
+      }
+
+      function applyBulkFix() {
+          const field = document.getElementById('bulkField').value;
+          const findTxt = document.getElementById('bulkFind').value;
+          const replaceTxt = document.getElementById('bulkReplace').value;
+          if(!findTxt) { alert("Please enter text to find."); return; }
+
+          let count = 0;
+          filteredData.forEach(record => {
+              if (record.masterRecord) return; 
+              let currentVal = "";
+              if (record.manualMergeData && record.manualMergeData[field]) { currentVal = record.manualMergeData[field]; } 
+              else { for (const src of sourceNames) { if (record.sources[src.name]?.[field]) { currentVal = record.sources[src.name][field]; break; } } }
+              
+              if (String(currentVal).includes(findTxt)) {
+                  const newVal = String(currentVal).replace(new RegExp(findTxt, 'g'), replaceTxt);
+                  if (!record.manualMergeData) {
+                      record.manualMergeData = {};
+                      fields.forEach(f => {
+                          let val = "";
+                          for (const src of sourceNames) { if (record.sources[src.name]?.[f]) { val = record.sources[src.name][f]; break; } }
+                          record.manualMergeData[f] = val;
+                      });
+                  }
+                  record.manualMergeData[field] = newVal;
+                  record.resolvedLocally = true;
+                  count++;
+              }
+          });
+
+          if (count > 0) {
+              updateLocalCache(); updateStats(); filterList();
+              if(currentRecord) selectEmployee(currentRecord); 
+              showToast(`Updated ${count} records.`);
+              document.getElementById('bulkFixModal').classList.add('hidden');
+          } else { alert("No matching records found."); }
       }
 
       function copyFromSource(sourceName) {
@@ -631,12 +760,7 @@
          });
          renderBody();
          showToast(`Copied all data from ${sourceName}`, true);
-         lastActionState = {
-            id: currentRecord.normalizedId,
-            recordRef: currentRecord,
-            wasResolved: currentRecord.resolvedLocally,
-            wasMaster: null
-         };
+         lastActionState = { id: currentRecord.normalizedId, recordRef: currentRecord, wasResolved: currentRecord.resolvedLocally, wasMaster: null };
       }
 
       function autoResolve() {
@@ -654,72 +778,24 @@
          renderBody(); showToast("Auto-resolved all fields!");
       }
       
-      function resetMerge() {
-         if (!currentRecord) return;
-         delete currentRecord.manualMergeData;
-         delete currentRecord.resolvedLocally;
-         selectEmployee(currentRecord, true); 
-         filterList();
-         showToast("Reset to original state.");
-      }
+      function resetMerge() { if (!currentRecord) return; delete currentRecord.manualMergeData; delete currentRecord.resolvedLocally; selectEmployee(currentRecord, true); filterList(); showToast("Reset to original state."); }
+      function markResolved() { if (!currentRecord) return; syncInputsToState(); currentRecord.resolvedLocally = true; currentRecord.manualMergeData = { ...finalMergeState }; updateLocalCache(); filterList(); showToast("Marked as resolved locally."); }
+      function saveAllResolved() { const recordsToSave = allData.filter(d => !d.masterRecord && d.resolvedLocally).map(d => d.manualMergeData); if (recordsToSave.length === 0) { showToast("No 'Resolved' records found to save."); return; } const btn = document.getElementById('bulkSaveBtn'), origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = `<div class="loader w-4 h-4 border-white border-t-transparent"></div> Saving ${recordsToSave.length}...`; google.script.run.withSuccessHandler(res => { showToast(res.message); allData.forEach(d => { if (!d.masterRecord && d.resolvedLocally) { d.masterRecord = d.manualMergeData; delete d.resolvedLocally; delete d.manualMergeData; } }); updateLocalCache(); updateStats(); filterList(); btn.disabled = false; btn.innerHTML = origText; }).withFailureHandler(err => { alert("Error: " + err.message); btn.disabled = false; btn.innerHTML = origText; }).saveBulkToMaster(recordsToSave); }
+      function handleCellClick(field, value) { if (field === 'Active') { const upper = String(value).toUpperCase(); if (['YES', 'TRUE', 'ACTIVE'].includes(upper)) { finalMergeState['Date Resigned'] = ''; finalMergeState['Reason for Leaving'] = ''; } } if (currentRecord.masterRecord && finalMergeState[field] !== value) showConfirmation(() => { finalMergeState[field] = value; renderBody(); }); else { finalMergeState[field] = value; renderBody(); } }
       
-      function markResolved() {
-        if (!currentRecord) return;
-        syncInputsToState(); 
-        currentRecord.resolvedLocally = true;
-        currentRecord.manualMergeData = { ...finalMergeState }; 
-        updateLocalCache(); 
-        filterList(); 
-        showToast("Marked as resolved locally.");
-      }
-
-      function saveAllResolved() {
-        const recordsToSave = allData.filter(d => !d.masterRecord && d.resolvedLocally).map(d => d.manualMergeData);
-        if (recordsToSave.length === 0) { showToast("No 'Resolved' records found to save. Please mark records as resolved first."); return; }
-        const btn = document.getElementById('bulkSaveBtn');
-        const origText = btn.innerHTML;
-        btn.disabled = true; btn.innerHTML = `<div class="loader w-4 h-4 border-white border-t-transparent"></div> Saving ${recordsToSave.length}...`;
-        
-        google.script.run.withSuccessHandler(res => { 
-            showToast(res.message); 
-            allData.forEach(d => {
-                if (!d.masterRecord && d.resolvedLocally) {
-                    d.masterRecord = d.manualMergeData;
-                    delete d.resolvedLocally;
-                    delete d.manualMergeData;
-                }
-            });
-            updateLocalCache(); 
-            updateStats();
-            filterList(); 
-            btn.disabled = false; btn.innerHTML = origText; 
-        }).withFailureHandler(err => { alert("Error: " + err.message); btn.disabled = false; btn.innerHTML = origText; }).saveBulkToMaster(recordsToSave);
-      }
-
-      function handleCellClick(field, value) {
-         if (field === 'Active') {
-             const upper = String(value).toUpperCase();
-             if (['YES', 'TRUE', 'ACTIVE'].includes(upper)) {
-                 finalMergeState['Date Resigned'] = '';
-                 finalMergeState['Reason for Leaving'] = '';
-             }
-         }
-         if (currentRecord.masterRecord && finalMergeState[field] !== value) { showConfirmation(() => { finalMergeState[field] = value; renderBody(); }); } else { finalMergeState[field] = value; renderBody(); }
-      }
-
       function updateFinal(field, value) {
          const updateLogic = () => {
             finalMergeState[field] = value;
             
-            // INSTANT HIGHLIGHTER TOGGLE (Dynamic)
-            const input = document.getElementById(`final-${field}`);
-            if (input && highlightMissingMode) {
-                if (!value || String(value).trim() === '' || value === 'N/A') {
-                    input.classList.add('highlight-error');
-                    input.classList.remove('bg-white', 'text-gray-900');
-                } else {
-                    input.classList.remove('highlight-error');
-                    input.classList.add('bg-white', 'text-gray-900');
+            // DYNAMIC HIGHLIGHT UPDATE
+            if (highlightMissingMode) {
+                const input = document.getElementById(`final-${field}`);
+                if (input) {
+                    if (!value || String(value).trim() === '' || value === 'N/A') {
+                        input.style.cssText = 'background-color: #fee2e2 !important; border: 2px solid #ef4444 !important; color: #7f1d1d !important;';
+                    } else {
+                        input.style.cssText = ''; 
+                    }
                 }
             }
 
@@ -738,93 +814,15 @@
          if (currentRecord.masterRecord) { showConfirmation(() => { updateLogic(); }, () => { document.getElementById(`final-${field}`).value = finalMergeState[field]; }); } else { updateLogic(); }
       }
       
-      function showConfirmation(onYes, onNo = () => {}) {
-         const modal = document.getElementById('customModal');
-         modal.classList.remove('hidden'); modal.classList.add('flex');
-         modalCallback = (confirmed) => { if (confirmed) onYes(); else onNo(); modal.classList.add('hidden'); modal.classList.remove('flex'); };
-      }
+      function showConfirmation(onYes, onNo = () => {}) { const modal = document.getElementById('customModal'); modal.classList.remove('hidden'); modal.classList.add('flex'); modalCallback = (confirmed) => { if (confirmed) onYes(); else onNo(); modal.classList.add('hidden'); modal.classList.remove('flex'); }; }
       function closeModal(result) { if (modalCallback) modalCallback(result); }
-
-      function validateRecord(data) {
-         const active = String(data['Active'] || '').toUpperCase();
-         if (['NO', 'FALSE', 'INACTIVE'].includes(active)) {
-             if (!data['Date Resigned'] || data['Date Resigned'] === 'N/A') return "Inactive employees MUST have a Date Resigned.";
-             if (!data['Reason for Leaving'] || data['Reason for Leaving'] === 'N/A') return "Inactive employees MUST have a Reason for Leaving.";
-         }
-         return null; 
-      }
-
-      function saveMerge() {
-        syncInputsToState(); 
-        const error = validateRecord(finalMergeState);
-        if (error) { alert(error); return; }
-
-        // CAPTURE STATE FOR UNDO
-        lastActionState = {
-            id: currentRecord.normalizedId,
-            recordRef: currentRecord,
-            wasResolved: currentRecord.resolvedLocally,
-            wasMaster: null 
-        };
-
-        const btn = document.getElementById('saveBtn');
-        btn.disabled = true; 
-        btn.innerHTML = `<div class="loader w-4 h-4 border-white border-t-transparent"></div> Saving...`;
-        
-        google.script.run.withSuccessHandler(res => {
-            if (currentRecord) {
-                currentRecord.masterRecord = { ...finalMergeState };
-                delete currentRecord.resolvedLocally;
-                delete currentRecord.manualMergeData;
-            }
-            updateLocalCache(); 
-            updateStats();
-            filterList(); 
-            document.getElementById('mergeInterface').classList.add('hidden'); 
-            document.getElementById('emptyState').classList.remove('hidden');
-            btn.disabled = false; 
-            btn.innerHTML = `<i class="ph ph-check-circle"></i> Save to Master Database`;
-            showToast(res.message, true); 
-        }).withFailureHandler(err => { 
-            alert(err.message); 
-            btn.disabled = false; 
-            btn.innerHTML = `<i class="ph ph-check-circle"></i> Save to Master Database`;
-        }).saveToMaster(finalMergeState);
-      }
-      
-      function undoLastAction() {
-          if (!lastActionState) return;
-          const { recordRef, wasResolved } = lastActionState;
-          delete recordRef.masterRecord; 
-          if (wasResolved) recordRef.resolvedLocally = true;
-          updateLocalCache();
-          updateStats();
-          filterList();
-          selectEmployee(recordRef);
-          document.getElementById('toast').classList.add('translate-y-20', 'opacity-0');
-          alert("Undo Successful. Note: Data remains in Sheet until overwritten.");
-      }
-
-      function detectGlobalConflict(item) {
-        let conflict = false;
-        fields.forEach(f => {
-          const vals = new Set();
-          sourceNames.forEach(src => { if(item.sources[src.name]?.[f]) vals.add(item.sources[src.name][f]); });
-          if(vals.size > 1) conflict = true;
-        });
-        return conflict;
-      }
-
-      function showToast(msg, allowUndo = false) { 
-          const el = document.getElementById('toast');
-          document.getElementById('toastMsg').innerText = msg;
-          const undoBtn = document.getElementById('toastUndoBtn');
-          if(allowUndo) undoBtn.classList.remove('hidden'); else undoBtn.classList.add('hidden');
-          el.classList.remove('translate-y-20', 'opacity-0');
-          setTimeout(() => { el.classList.add('translate-y-20', 'opacity-0'); }, 5000); 
-      }
-
+      function validateRecord(data) { const active = String(data['Active'] || '').toUpperCase(); if (['NO', 'FALSE', 'INACTIVE'].includes(active)) { if (!data['Date Resigned'] || data['Date Resigned'] === 'N/A') return "Inactive employees MUST have a Date Resigned."; if (!data['Reason for Leaving'] || data['Reason for Leaving'] === 'N/A') return "Inactive employees MUST have a Reason for Leaving."; } return null; }
+      function saveMerge() { syncInputsToState(); const error = validateRecord(finalMergeState); if (error) { alert(error); return; } lastActionState = { id: currentRecord.normalizedId, recordRef: currentRecord, wasResolved: currentRecord.resolvedLocally, wasMaster: null }; const btn = document.getElementById('saveBtn'); btn.disabled = true; btn.innerHTML = `<div class="loader w-4 h-4 border-white border-t-transparent"></div> Saving...`; google.script.run.withSuccessHandler(res => { if (currentRecord) { currentRecord.masterRecord = { ...finalMergeState }; delete currentRecord.resolvedLocally; delete currentRecord.manualMergeData; } updateLocalCache(); updateStats(); filterList(); document.getElementById('mergeInterface').classList.add('hidden'); document.getElementById('emptyState').classList.remove('hidden'); btn.disabled = false; btn.innerHTML = `<i class="ph ph-check-circle"></i> Save to Master Database`; showToast(res.message, true); }).withFailureHandler(err => { alert(err.message); btn.disabled = false; btn.innerHTML = `<i class="ph ph-check-circle"></i> Save to Master Database`; }).saveToMaster(finalMergeState); }
+      function undoLastAction() { if (!lastActionState) return; const { recordRef, wasResolved } = lastActionState; delete recordRef.masterRecord; if (wasResolved) recordRef.resolvedLocally = true; updateLocalCache(); updateStats(); filterList(); selectEmployee(recordRef); document.getElementById('toast').classList.add('translate-y-20', 'opacity-0'); alert("Undo Successful. Note: Data remains in Sheet until overwritten."); }
+      function detectGlobalConflict(item) { let conflict = false; fields.forEach(f => { const vals = new Set(); sourceNames.forEach(src => { const sName = src.name || src; if(item.sources[sName]?.[f]) vals.add(item.sources[sName][f]); }); if(vals.size > 1) conflict = true; }); return conflict; }
+      function showToast(msg, allowUndo = false) { const el = document.getElementById('toast'); document.getElementById('toastMsg').innerText = msg; const undoBtn = document.getElementById('toastUndoBtn'); if(allowUndo) undoBtn.classList.remove('hidden'); else undoBtn.classList.add('hidden'); el.classList.remove('translate-y-20', 'opacity-0'); setTimeout(() => { el.classList.add('translate-y-20', 'opacity-0'); }, 5000); }
       function showError(err) { alert("Error: " + err.message); document.getElementById('loadingState').classList.add('hidden'); }
+      function toggleHighlight() { highlightMissingMode = document.getElementById('highlightMissingCheckbox').checked; if (currentRecord) renderBody(); }
     </script>
   </body>
 </html>
