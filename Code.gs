@@ -129,12 +129,9 @@ function _fetchRawDataFromSources() {
               if (!keepBlank.includes(field) && (val === "" || val === null || val === undefined)) val = "N/A";
             }
             
-            // --- CRITICAL FIX: Force String Conversion to prevent filter errors ---
-            if (val instanceof Date) {
-                val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
-            } else {
-                val = String(val ?? "").trim(); 
-            }
+            if (val instanceof Date) val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+            else val = String(val ?? "").trim();
+            
             sourceRecord[field] = val;
           });
 
@@ -212,8 +209,8 @@ function getLevenshteinDistance(s1, s2) {
 function getConsolidatedData(filters = {}) {
   const fields = getMasterHeaders();
   const cache = CacheService.getScriptCache();
-  const cacheKeyMeta = 'consolidated_data_v13_fix'; // CACHE KEY UPDATED
-  const cacheKeyChunkPrefix = 'consolidated_data_v13_chunk_';
+  const cacheKeyMeta = 'consolidated_data_v15_final'; 
+  const cacheKeyChunkPrefix = 'consolidated_data_v15_chunk_';
   const CHUNK_SIZE = 90000; 
 
   let groupedData, detectedSourceNames;
@@ -311,7 +308,7 @@ function getConsolidatedData(filters = {}) {
 
 function getFilterOptions() {
   const cache = CacheService.getScriptCache();
-  const cacheKey = 'filter_options_v13_fix';
+  const cacheKey = 'filter_options_v15_final';
   const cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
@@ -409,7 +406,7 @@ function saveBulkToMaster(records) {
     if (newRows.length > 0) sheet.getRange(data.length + 1, 1, newRows.length, newRows[0].length).setValues(newRows);
     
     const cache = CacheService.getScriptCache();
-    const keys = ['consolidated_data_v13_fix', 'filter_options_v13_fix'];
+    const keys = ['consolidated_data_v15_final', 'filter_options_v15_final'];
     cache.removeAll(keys);
     return { success: true, message: `Bulk Saved: ${updated} Updated, ${added} Added.` };
   } catch (e) { return { success: false, message: e.toString() }; } finally { lock.releaseLock(); }
@@ -426,6 +423,29 @@ function logChange(ss, action, id, details) {
     const user = Session.getActiveUser().getEmail() || "Unknown";
     logSheet.appendRow([new Date(), user, action, id, details]);
   } catch(e) { console.error("Logging failed", e); }
+}
+
+// --- NEW: FETCH LOGS FOR FRONTEND ---
+function getEmployeeLogs(employeeId) {
+  try {
+      const masterId = cleanId(CONFIG.MASTER.ID);
+      const ss = SpreadsheetApp.openById(masterId);
+      const sheet = ss.getSheetByName(CONFIG.MASTER.LOG_TAB);
+      if (!sheet) return [];
+      
+      const data = sheet.getDataRange().getValues();
+      // Assuming: [Timestamp, User, Action, Employee ID, Details]
+      const logs = data.slice(1).filter(row => String(row[3]) === String(employeeId)).map(row => ({
+          timestamp: row[0],
+          user: row[1],
+          action: row[2],
+          details: row[4]
+      }));
+      // Sort newest first
+      return logs.reverse();
+  } catch(e) {
+      return [];
+  }
 }
 
 function letterToColumn(letter) {
