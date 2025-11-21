@@ -6,87 +6,198 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
-      .selected-cell { background-color: #dbeafe; font-weight: 600; } 
-      .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
-      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      .thin-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-      .thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
-      .thin-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
-      .thin-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #94a3b8; }
-      .dropdown-enter { opacity: 0; transform: scaleY(0.95); }
-      .dropdown-enter-active { opacity: 1; transform: scaleY(1); transition: opacity 0.1s, transform 0.1s; }
-      .search-input:focus + .search-icon { color: #2563eb; }
-      .highlight-error { background-color: #fee2e2 !important; border: 1px solid #ef4444 !important; color: #7f1d1d !important; }
+      /* Selected Cell Style */
+      .selected-cell {
+        background-color: #dbeafe;
+        font-weight: 600;
+      }
+
+      /* Loading Spinner */
+      .loader {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      /* Custom Scrollbars */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      .thin-scrollbar::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+
+      .thin-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .thin-scrollbar::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border-radius: 4px;
+      }
+
+      .thin-scrollbar:hover::-webkit-scrollbar-thumb {
+        background-color: #94a3b8;
+      }
+
+      /* Dropdown Animation */
+      .dropdown-enter {
+        opacity: 0;
+        transform: scaleY(0.95);
+      }
+
+      .dropdown-enter-active {
+        opacity: 1;
+        transform: scaleY(1);
+        transition: opacity 0.1s, transform 0.1s;
+      }
+
+      .search-input:focus+.search-icon {
+        color: #2563eb;
+      }
+
+      /* Highlight Error Class */
+      .highlight-error {
+        background-color: #fee2e2 !important;
+        border: 1px solid #ef4444 !important;
+        color: #7f1d1d !important;
+      }
     </style>
   </head>
+
   <body class="bg-gray-50 text-gray-800 h-screen flex flex-col overflow-hidden" onclick="closeGlobalDropdown(event)">
 
     <header class="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm z-10">
       <div class="flex items-center gap-3">
-        <div class="bg-blue-600 text-white p-2 rounded-lg shadow-md"><i class="ph ph-database text-xl"></i></div>
-        <div><h1 class="text-xl font-bold text-gray-700">Data Consolidator</h1><p id="lastUpdated" class="text-[10px] text-gray-400 font-medium">Waiting...</p></div>
+        <div class="bg-blue-600 text-white p-2 rounded-lg shadow-md">
+          <i class="ph ph-database text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold text-gray-700">Data Consolidator</h1>
+          <p id="lastUpdated" class="text-[10px] text-gray-400 font-medium">Waiting for data...</p>
+        </div>
       </div>
       <div class="flex gap-2">
-         <button onclick="saveAllResolved()" id="bulkSaveBtn" class="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded shadow font-medium transition"><i class="ph ph-floppy-disk-back"></i> Save All Resolved</button>
-         <button onclick="loadData(true)" class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm font-medium transition"><i class="ph ph-arrows-clockwise"></i> Force Refresh</button>
+        <button onclick="saveAllResolved()" id="bulkSaveBtn" class="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded shadow font-medium transition">
+          <i class="ph ph-floppy-disk-back"></i> Save All Resolved
+        </button>
+        <button onclick="loadData(true)" class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm font-medium transition">
+          <i class="ph ph-arrows-clockwise"></i> Force Refresh
+        </button>
       </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
-      
+
       <aside class="w-1/3 min-w-[350px] bg-white border-r flex flex-col z-0 relative">
         <div class="p-4 border-b bg-gray-50">
-          
+
           <div class="flex gap-2 mb-4">
-             <button onclick="resetView()" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 border border-gray-200">
-                <i class="ph ph-arrow-counter-clockwise"></i> Reset
-             </button>
-             <button onclick="openBulkFixModal()" class="flex-1 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 border border-purple-200">
-                <i class="ph ph-wrench"></i> Bulk Fix
-             </button>
+            <button onclick="resetView()" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 border border-gray-200">
+              <i class="ph ph-arrow-counter-clockwise"></i> Reset
+            </button>
+            <button onclick="openBulkFixModal()" class="flex-1 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 border border-purple-200">
+              <i class="ph ph-wrench"></i> Bulk Fix
+            </button>
           </div>
 
-          <div class="mb-4"><div class="flex justify-between text-xs mb-1.5"><span class="font-bold text-gray-700 uppercase tracking-wider">Progress</span><span class="font-mono text-blue-600 font-semibold" id="progressText">...</span></div><div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden"><div id="progressBar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div></div></div>
+          <div class="mb-4">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="font-bold text-gray-700 uppercase tracking-wider">Progress</span>
+              <span class="font-mono text-blue-600 font-semibold" id="progressText">...</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+              <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+            </div>
+          </div>
 
           <div class="relative group mb-3">
             <i class="ph ph-magnifying-glass absolute left-3 top-3 text-gray-400"></i>
             <input type="text" id="searchInput" placeholder="Search Name or ID..." class="w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" onkeyup="filterList()">
-            <button onclick="clearSearch()" class="absolute right-2 top-2 p-1 text-gray-400 hover:text-gray-600 hidden group-focus-within:block hover:bg-gray-200 rounded"><i class="ph ph-x"></i></button>
+            <button onclick="clearSearch()" class="absolute right-2 top-2 p-1 text-gray-400 hover:text-gray-600 hidden group-focus-within:block hover:bg-gray-200 rounded">
+              <i class="ph ph-x"></i>
+            </button>
           </div>
 
           <div class="relative mb-3">
-             <select id="sortBy" onchange="filterList()" class="w-full text-xs p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 appearance-none font-medium text-gray-700">
-                <option value="name">Sort by Name (A-Z)</option>
-                <option value="id">Sort by ID</option>
-                <option value="status" selected>Sort by Priority (Conflicts First)</option>
-             </select>
-             <i class="ph ph-sort-ascending absolute right-3 top-2.5 text-gray-400 pointer-events-none"></i>
+            <select id="sortBy" onchange="filterList()" class="w-full text-xs p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 appearance-none font-medium text-gray-700">
+              <option value="name">Sort by Name (A-Z)</option>
+              <option value="id">Sort by ID</option>
+              <option value="status" selected>Sort by Priority (Conflicts First)</option>
+            </select>
+            <i class="ph ph-sort-ascending absolute right-3 top-2.5 text-gray-400 pointer-events-none"></i>
           </div>
-          
+
           <div class="grid grid-cols-3 gap-1">
-            <label class="flex items-center gap-1 text-xs text-gray-600 cursor-pointer select-none hover:text-blue-600 transition"><input type="checkbox" id="hideSavedCheckbox" onchange="filterList()" class="rounded text-blue-600 focus:ring-blue-500"><span class="truncate">Hide Saved</span></label>
-            <label class="flex items-center gap-1 text-xs text-blue-600 cursor-pointer select-none hover:text-blue-700 transition font-medium"><input type="checkbox" id="showSavedOnlyCheckbox" onchange="filterList()" class="rounded text-blue-500 focus:ring-blue-500"><span class="truncate">Saved Only</span></label>
-            <label class="flex items-center gap-1 text-xs text-teal-600 cursor-pointer select-none hover:text-teal-700 transition font-medium"><input type="checkbox" id="showCleanCheckbox" onchange="filterList()" class="rounded text-teal-500 focus:ring-teal-500"><span class="truncate">No Conflicts</span></label>
-            <label class="flex items-center gap-1 text-xs text-orange-600 cursor-pointer select-none hover:text-orange-700 transition font-medium"><input type="checkbox" id="showConflictsCheckbox" onchange="filterList()" class="rounded text-orange-500 focus:ring-orange-500"><span class="truncate">Conflicts</span></label>
-            <label class="flex items-center gap-1 text-xs text-green-600 cursor-pointer select-none hover:text-green-700 transition font-medium"><input type="checkbox" id="showResolvedCheckbox" onchange="filterList()" class="rounded text-green-500 focus:ring-green-500"><span class="truncate">Resolved</span></label>
-            <label class="flex items-center gap-1 text-xs text-red-600 cursor-pointer select-none hover:text-red-700 transition font-medium"><input type="checkbox" id="highlightMissingCheckbox" onchange="toggleHighlight()" class="rounded text-red-500 focus:ring-red-500"><span class="truncate">Missing Data</span></label>
+            <label class="flex items-center gap-1 text-xs text-gray-600 cursor-pointer select-none hover:text-blue-600 transition">
+              <input type="checkbox" id="hideSavedCheckbox" onchange="filterList()" class="rounded text-blue-600 focus:ring-blue-500">
+              <span class="truncate">Hide Saved</span>
+            </label>
+
+            <label class="flex items-center gap-1 text-xs text-blue-600 cursor-pointer select-none hover:text-blue-700 transition font-medium">
+              <input type="checkbox" id="showSavedOnlyCheckbox" onchange="filterList()" class="rounded text-blue-500 focus:ring-blue-500">
+              <span class="truncate">Saved Only</span>
+            </label>
+
+            <label class="flex items-center gap-1 text-xs text-teal-600 cursor-pointer select-none hover:text-teal-700 transition font-medium">
+              <input type="checkbox" id="showCleanCheckbox" onchange="filterList()" class="rounded text-teal-500 focus:ring-teal-500">
+              <span class="truncate">No Conflicts</span>
+            </label>
+
+            <label class="flex items-center gap-1 text-xs text-orange-600 cursor-pointer select-none hover:text-orange-700 transition font-medium">
+              <input type="checkbox" id="showConflictsCheckbox" onchange="filterList()" class="rounded text-orange-500 focus:ring-orange-500">
+              <span class="truncate">Conflicts</span>
+            </label>
+
+            <label class="flex items-center gap-1 text-xs text-green-600 cursor-pointer select-none hover:text-green-700 transition font-medium">
+              <input type="checkbox" id="showResolvedCheckbox" onchange="filterList()" class="rounded text-green-500 focus:ring-green-500">
+              <span class="truncate">Resolved</span>
+            </label>
+
+            <label class="flex items-center gap-1 text-xs text-red-600 cursor-pointer select-none hover:text-red-700 transition font-medium">
+              <input type="checkbox" id="highlightMissingCheckbox" onchange="toggleHighlight()" class="rounded text-red-500 focus:ring-red-500">
+              <span class="truncate">Missing Data</span>
+            </label>
           </div>
         </div>
 
         <div class="border-b bg-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] relative group z-20">
-             <button onclick="resetFilters()" title="Reset Dropdowns" class="absolute right-1 top-1 z-10 bg-white/90 p-1 rounded-full shadow border hover:bg-red-50 text-red-500 hidden group-hover:block"><i class="ph ph-funnel-x"></i></button>
-             <div id="filterContainer" class="flex gap-2 overflow-x-auto p-3 no-scrollbar pr-8"></div>
+          <button onclick="resetFilters()" title="Reset Dropdowns" class="absolute right-1 top-1 z-10 bg-white/90 p-1 rounded-full shadow border hover:bg-red-50 text-red-500 hidden group-hover:block">
+            <i class="ph ph-funnel-x"></i>
+          </button>
+          <div id="filterContainer" class="flex gap-2 overflow-x-auto p-3 no-scrollbar pr-8"></div>
         </div>
-        
-        <div id="loadingState" class="flex flex-col items-center justify-center h-64 hidden"><div class="loader mb-4"></div><p class="text-gray-500 text-sm">Scanning Sheets...</p></div>
+
+        <div id="loadingState" class="flex flex-col items-center justify-center h-64 hidden">
+          <div class="loader mb-4"></div>
+          <p class="text-gray-500 text-sm">Scanning Sheets...</p>
+        </div>
+
         <div id="employeeList" class="flex-1 overflow-y-auto p-2 space-y-2 bg-gray-50/50 z-0" onscroll="closeGlobalDropdown()"></div>
-        
+
         <div id="paginationControls" class="p-3 border-t bg-white flex justify-between items-center text-xs hidden z-10">
-            <button onclick="changePage(-1)" id="prevPageBtn" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed font-medium text-gray-600 transition"><i class="ph ph-caret-left"></i> Prev</button>
-            <span id="pageIndicator" class="font-semibold text-gray-500">Page 1 of 1</span>
-            <button onclick="changePage(1)" id="nextPageBtn" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed font-medium text-gray-600 transition">Next <i class="ph ph-caret-right"></i></button>
+          <button onclick="changePage(-1)" id="prevPageBtn" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed font-medium text-gray-600 transition">
+            <i class="ph ph-caret-left"></i> Prev
+          </button>
+          <span id="pageIndicator" class="font-semibold text-gray-500">Page 1 of 1</span>
+          <button onclick="changePage(1)" id="nextPageBtn" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed font-medium text-gray-600 transition">
+            Next <i class="ph ph-caret-right"></i>
+          </button>
         </div>
       </aside>
 
@@ -96,33 +207,41 @@
           <p class="text-lg">Select an employee to merge data</p>
         </div>
 
-        <div id="mergeInterface" class="hidden max-w-full mx-auto"> 
+        <div id="mergeInterface" class="hidden max-w-full mx-auto">
           <div class="flex justify-between items-end mb-4 flex-wrap gap-2">
             <div>
               <h2 class="text-2xl font-bold text-gray-800" id="currentEmployeeName">...</h2>
               <p class="text-sm text-gray-500">Normalized ID: <span id="currentEmployeeID" class="font-mono text-blue-600">...</span></p>
             </div>
-            
+
             <div class="flex items-center gap-2 flex-wrap">
-               <div class="relative">
-                  <select id="fieldFilterSelect" onchange="renderBody()" class="text-xs p-2 pl-2 pr-8 border rounded-lg bg-white font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 appearance-none">
-                      <option value="all">All Fields</option>
-                      <option value="identity">Identity Only</option>
-                      <option value="job">Job Details</option>
-                      <option value="status">Dates & Status</option>
-                  </select>
-                  <i class="ph ph-funnel absolute right-2.5 top-2.5 text-gray-400 pointer-events-none"></i>
-               </div>
-               <div class="h-6 w-px bg-gray-300 mx-1 hidden sm:block"></div>
+              <div class="relative">
+                <select id="fieldFilterSelect" onchange="renderBody()" class="text-xs p-2 pl-2 pr-8 border rounded-lg bg-white font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 appearance-none">
+                  <option value="all">All Fields</option>
+                  <option value="identity">Identity Only</option>
+                  <option value="job">Job Details</option>
+                  <option value="status">Dates & Status</option>
+                </select>
+                <i class="ph ph-funnel absolute right-2.5 top-2.5 text-gray-400 pointer-events-none"></i>
+              </div>
+              <div class="h-6 w-px bg-gray-300 mx-1 hidden sm:block"></div>
 
-               <button onclick="viewHistory()" class="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-semibold rounded-lg transition flex items-center gap-2" title="View Audit Logs">
-                 <i class="ph ph-clock-counter-clockwise"></i> History
-               </button>
+              <button onclick="viewHistory()" class="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-semibold rounded-lg transition flex items-center gap-2" title="View Audit Logs">
+                <i class="ph ph-clock-counter-clockwise"></i> History
+              </button>
 
-               <button onclick="resetMerge()" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-lg transition flex items-center gap-2"><i class="ph ph-arrow-counter-clockwise"></i></button>
-               <button onclick="markResolved()" class="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 text-sm font-semibold rounded-lg transition flex items-center gap-2" title="Mark as locally resolved"><i class="ph ph-check"></i> Mark Resolved</button>
-               <button onclick="autoResolve()" class="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm font-semibold rounded-lg transition flex items-center gap-2" title="Auto pick most frequent values"><i class="ph ph-magic-wand"></i> Auto</button>
-               <span class="px-3 py-2 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold flex items-center gap-1 border border-yellow-200"><i class="ph ph-warning"></i> Click cells</span>
+              <button onclick="resetMerge()" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-lg transition flex items-center gap-2">
+                <i class="ph ph-arrow-counter-clockwise"></i>
+              </button>
+              <button onclick="markResolved()" class="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 text-sm font-semibold rounded-lg transition flex items-center gap-2" title="Mark as locally resolved">
+                <i class="ph ph-check"></i> Mark Resolved
+              </button>
+              <button onclick="autoResolve()" class="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm font-semibold rounded-lg transition flex items-center gap-2" title="Auto pick most frequent values">
+                <i class="ph ph-magic-wand"></i> Auto
+              </button>
+              <span class="px-3 py-2 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold flex items-center gap-1 border border-yellow-200">
+                <i class="ph ph-warning"></i> Click cells
+              </span>
             </div>
           </div>
 
@@ -143,121 +262,785 @@
     </div>
 
     <div id="globalDropdown" class="hidden fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto w-[200px]"></div>
-    <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white px-6 py-3 rounded shadow-lg transform translate-y-20 transition duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-4"><span id="toastMsg">Action Completed</span><button id="toastUndoBtn" class="hidden text-yellow-400 hover:text-yellow-300 font-bold text-xs uppercase tracking-wider" onclick="undoLastAction()">UNDO</button></div>
+
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white px-6 py-3 rounded shadow-lg transform translate-y-20 transition duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-4">
+      <span id="toastMsg">Action Completed</span>
+      <button id="toastUndoBtn" class="hidden text-yellow-400 hover:text-yellow-300 font-bold text-xs uppercase tracking-wider" onclick="undoLastAction()">UNDO</button>
+    </div>
 
     <div id="bulkFixModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 transform transition-all scale-95">
-            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><i class="ph ph-wrench text-purple-600"></i> Bulk Find & Replace</h3>
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Target Field</label>
-                    <select id="bulkField" class="w-full p-2 border rounded text-sm"></select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Find text</label>
-                    <input type="text" id="bulkFind" class="w-full p-2 border rounded text-sm" placeholder="e.g. I.T.">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Replace with</label>
-                    <input type="text" id="bulkReplace" class="w-full p-2 border rounded text-sm" placeholder="e.g. Information Technology">
-                </div>
-                <p class="text-xs text-gray-400 italic mt-2">This will update ALL visible records in the current list.</p>
-            </div>
-            <div class="flex gap-3 justify-end mt-6">
-                <button onclick="document.getElementById('bulkFixModal').classList.add('hidden')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition">Cancel</button>
-                <button onclick="applyBulkFix()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition">Apply Fix</button>
-            </div>
+      <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 transform transition-all scale-95">
+        <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><i class="ph ph-wrench text-purple-600"></i> Bulk Find & Replace</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Target Field</label>
+            <select id="bulkField" class="w-full p-2 border rounded text-sm"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Find text</label>
+            <input type="text" id="bulkFind" class="w-full p-2 border rounded text-sm" placeholder="e.g. I.T.">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Replace with</label>
+            <input type="text" id="bulkReplace" class="w-full p-2 border rounded text-sm" placeholder="e.g. Information Technology">
+          </div>
+          <p class="text-xs text-gray-400 italic mt-2">This will update ALL visible records in the current list.</p>
         </div>
+        <div class="flex gap-3 justify-end mt-6">
+          <button onclick="document.getElementById('bulkFixModal').classList.add('hidden')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition">Cancel</button>
+          <button onclick="applyBulkFix()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition">Apply Fix</button>
+        </div>
+      </div>
     </div>
 
     <div id="historyModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-lg w-full mx-4 transform transition-all scale-95 h-[500px] flex flex-col">
-            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><i class="ph ph-clock-counter-clockwise text-blue-600"></i> Audit History</h3>
-            <div id="historyContent" class="flex-1 overflow-y-auto space-y-2 border-t border-b py-2">
-                <div class="text-center text-gray-400 mt-10">Loading...</div>
-            </div>
-            <div class="flex justify-end mt-4">
-                <button onclick="document.getElementById('historyModal').classList.add('hidden')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition">Close</button>
-            </div>
+      <div class="bg-white rounded-xl shadow-2xl p-6 max-w-lg w-full mx-4 transform transition-all scale-95 h-[500px] flex flex-col">
+        <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><i class="ph ph-clock-counter-clockwise text-blue-600"></i> Audit History</h3>
+        <div id="historyContent" class="flex-1 overflow-y-auto space-y-2 border-t border-b py-2">
+          <div class="text-center text-gray-400 mt-10">Loading...</div>
         </div>
+        <div class="flex justify-end mt-4">
+          <button onclick="document.getElementById('historyModal').classList.add('hidden')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition">Close</button>
+        </div>
+      </div>
     </div>
 
     <div id="customModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 transform transition-all scale-95" id="modalContent">
-            <div class="mb-4">
-                <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mb-4"><i class="ph ph-warning text-2xl text-yellow-600"></i></div>
-                <h3 class="text-lg font-bold text-gray-900">Confirm Overwrite</h3>
-                <p class="text-sm text-gray-500 mt-2">This record is already saved in the Master Database. Are you sure you want to overwrite it?</p>
-            </div>
-            <div class="flex gap-3 justify-end">
-                <button onclick="closeModal(false)" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition">Cancel</button>
-                <button onclick="closeModal(true)" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">Yes, Overwrite</button>
-            </div>
+      <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 transform transition-all scale-95" id="modalContent">
+        <div class="mb-4">
+          <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+            <i class="ph ph-warning text-2xl text-yellow-600"></i>
+          </div>
+          <h3 class="text-lg font-bold text-gray-900">Confirm Overwrite</h3>
+          <p class="text-sm text-gray-500 mt-2">This record is already saved in the Master Database. Are you sure you want to overwrite it?</p>
         </div>
+        <div class="flex gap-3 justify-end">
+          <button onclick="closeModal(false)" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition">Cancel</button>
+          <button onclick="closeModal(true)" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">Yes, Overwrite</button>
+        </div>
+      </div>
     </div>
 
     <script>
-      // ... [Standard Variables] ...
-      let allData = [], filteredData = [], fields = [], sourceNames = [], currentRecord = null, finalMergeState = {}, currentFilters = {}, fullFilterOptions = null, modalCallback = null, activeFilterField = null, highlightMissingMode = false;
-      let currentPage = 1; const itemsPerPage = 20, CACHE_KEY_DATA = 'dc_all_data_v4', CACHE_KEY_FILTERS = 'dc_filters_v4', CACHE_KEY_TIME = 'dc_last_updated';
+      let allData = [];
+      let filteredData = [];
+      let fields = [];
+      let sourceNames = [];
+      let currentRecord = null;
+      let finalMergeState = {};
+      let currentFilters = {};
+      let fullFilterOptions = null;
+      let modalCallback = null;
+      let activeFilterField = null;
+      let highlightMissingMode = false;
+      let currentPage = 1;
+      const itemsPerPage = 20;
       let lastActionState = null;
-      const FIELD_GROUPS = { identity: ["Employee ID", "Full Name", "Last Name", "First Name", "Middle Name", "Suffix", "Nickname", "Gender", "Date of Birth", "Civil Status"], job: ["Company Name", "Division", "Group", "Department", "Section", "Work Location", "Position", "Job Group", "Superior ID", "Superior Name"], status: ["Active", "Employment Type", "Date Hired", "Date Regular", "Date Resigned", "Reason for Leaving"] };
 
-      window.onload = () => { if(!loadFromCache()) loadData(true); };
-      
-      // ... [Loaders & Cache - Same as before] ...
-      function loadFromCache() { try { const localData = localStorage.getItem(CACHE_KEY_DATA), localFilters = localStorage.getItem(CACHE_KEY_FILTERS), lastTime = localStorage.getItem(CACHE_KEY_TIME); if (localData && localFilters) { const parsedData = JSON.parse(localData); fullFilterOptions = JSON.parse(localFilters); allData = parsedData.data; fields = parsedData.fields; sourceNames = parsedData.sourceNames; document.getElementById('lastUpdated').innerText = `Loaded cached data: ${lastTime}`; document.getElementById('loadingState').classList.add('hidden'); renderFilterInputs(); updateStats(); filterList(); showToast("Loaded data from cache (Instant)"); return true; } } catch(e) {} return false; }
-      function loadData(force = false) { document.getElementById('loadingState').classList.remove('hidden'); document.getElementById('lastUpdated').innerText = "Scanning sheets..."; google.script.run.withSuccessHandler(filters => { fullFilterOptions = filters; try { localStorage.setItem(CACHE_KEY_FILTERS, JSON.stringify(filters)); } catch(e) {} renderFilterInputs(); google.script.run.withSuccessHandler(onDataLoaded).withFailureHandler(showError).getConsolidatedData({}); }).getFilterOptions(); }
-      function onDataLoaded(response) { allData = response.data; fields = response.headers; sourceNames = response.sourceNames; const now = new Date().toLocaleTimeString(); try { localStorage.setItem(CACHE_KEY_DATA, JSON.stringify({ data: allData, fields: fields, sourceNames: sourceNames })); localStorage.setItem(CACHE_KEY_TIME, now); } catch(e) {} document.getElementById('lastUpdated').innerText = `Last updated: ${now}`; document.getElementById('loadingState').classList.add('hidden'); updateStats(); filterList(); showToast("Data refreshed successfully"); }
-      function updateLocalCache() { try { const currentCache = JSON.parse(localStorage.getItem(CACHE_KEY_DATA)); currentCache.data = allData; localStorage.setItem(CACHE_KEY_DATA, JSON.stringify(currentCache)); } catch(e) {} }
-      function updateStats() { const total = filteredData.length; const saved = filteredData.filter(d => d.masterRecord).length; const percent = total === 0 ? 0 : Math.round((saved / total) * 100); document.getElementById('progressText').innerText = `${saved} / ${total} (${percent}%)`; document.getElementById('progressBar').style.width = `${percent}%`; }
-      function renderFilterInputs() { const container = document.getElementById('filterContainer'); container.innerHTML = ''; const filterKeys = ['Work Location', 'Division', 'Group', 'Department', 'Section']; filterKeys.forEach(field => { const wrapper = document.createElement('div'); wrapper.className = 'relative min-w-[160px] shrink-0'; const input = document.createElement('input'); input.type = 'text'; input.placeholder = field; input.value = currentFilters[field] || ''; input.className = 'w-full text-xs p-2 pr-8 border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 shadow-sm text-gray-600 font-medium cursor-pointer search-input'; input.id = `input-${field}`; input.onclick = (e) => { e.stopPropagation(); openGlobalDropdown(field, input); }; input.oninput = (e) => { openGlobalDropdown(field, input, e.target.value); }; const icon = document.createElement('i'); icon.className = 'ph ph-caret-down absolute right-2 top-2.5 text-gray-400 pointer-events-none'; wrapper.appendChild(input); wrapper.appendChild(icon); container.appendChild(wrapper); }); }
-      function openGlobalDropdown(field, inputEl, searchText = "") { activeFilterField = field; const globalDrop = document.getElementById('globalDropdown'), rect = inputEl.getBoundingClientRect(); globalDrop.style.top = (rect.bottom + 5) + 'px'; globalDrop.style.left = rect.left + 'px'; globalDrop.style.width = rect.width + 'px'; globalDrop.innerHTML = ''; const items = getDependentOptions(field); if (!searchText) { const allOpt = document.createElement('div'); allOpt.textContent = `All ${field}s`; allOpt.className = 'p-2 hover:bg-blue-50 text-xs cursor-pointer text-gray-500 italic border-b'; allOpt.onclick = () => selectGlobalOption(field, ''); globalDrop.appendChild(allOpt); } const lowerSearch = searchText.toLowerCase(); let count = 0; items.forEach(opt => { if(opt === '---') { if(!searchText) { const sep = document.createElement('div'); sep.textContent = '--- Other ---'; sep.className = 'p-1 text-[10px] text-gray-400 font-bold text-center uppercase bg-gray-50'; globalDrop.appendChild(sep); } } else { if(opt.toLowerCase().includes(lowerSearch)) { const item = document.createElement('div'); item.textContent = opt; item.className = 'p-2 hover:bg-blue-50 text-xs cursor-pointer text-gray-700 dropdown-item'; item.onclick = () => selectGlobalOption(field, opt); globalDrop.appendChild(item); count++; } } }); if(count === 0 && searchText) globalDrop.innerHTML = '<div class="p-2 text-xs text-gray-400 italic">No matches</div>'; globalDrop.classList.remove('hidden'); }
-      function selectGlobalOption(field, value) { currentFilters[field] = value; document.getElementById(`input-${field}`).value = value; if (field === 'Division') { currentFilters['Group'] = ''; currentFilters['Department'] = ''; currentFilters['Section'] = ''; } else if (field === 'Group') { currentFilters['Department'] = ''; currentFilters['Section'] = ''; } else if (field === 'Department') { currentFilters['Section'] = ''; } renderFilterInputs(); closeGlobalDropdown(); filterList(); }
-      function closeGlobalDropdown(e) { if (!e || (e.target.id !== 'globalDropdown' && !e.target.closest('#globalDropdown'))) document.getElementById('globalDropdown').classList.add('hidden'); }
-      function getDependentOptions(field) { if (!fullFilterOptions) return []; if (field === 'Work Location') return fullFilterOptions.raw['Work Location'] || []; const hierarchy = fullFilterOptions.orgChart || [], rawDataList = fullFilterOptions.raw[field] || []; let validOrgValues = new Set(); hierarchy.filter(row => { if (field === 'Group' && currentFilters['Division'] && row.Division !== currentFilters['Division']) return false; if (field === 'Department' && ((currentFilters['Division'] && row.Division !== currentFilters['Division']) || (currentFilters['Group'] && row.Group !== currentFilters['Group']))) return false; if (field === 'Section' && ((currentFilters['Division'] && row.Division !== currentFilters['Division']) || (currentFilters['Group'] && row.Group !== currentFilters['Group']) || (currentFilters['Department'] && row.Department !== currentFilters['Department']))) return false; return true; }).forEach(row => { if (row[field]) validOrgValues.add(row[field]); }); const sortedOrg = Array.from(validOrgValues).sort(); const others = rawDataList.filter(val => !validOrgValues.has(val)); return others.length > 0 ? [...sortedOrg, '---', ...others] : sortedOrg; }
-      function resetView() { document.getElementById('searchInput').value = ''; document.getElementById('sortBy').value = 'status'; document.getElementById('hideSavedCheckbox').checked = false; document.getElementById('showSavedOnlyCheckbox').checked = false; document.getElementById('showConflictsCheckbox').checked = false; document.getElementById('showResolvedCheckbox').checked = false; document.getElementById('highlightMissingCheckbox').checked = false; document.getElementById('showCleanCheckbox').checked = false; highlightMissingMode = false; currentFilters = {}; renderFilterInputs(); filterList(); showToast("View Reset"); }
-      function syncInputsToState() { if(!currentRecord) return; fields.forEach(field => { const input = document.getElementById(`final-${field}`); if (input) finalMergeState[field] = input.value; }); }
-      function filterList() { const query = document.getElementById('searchInput').value.toLowerCase(), hideSaved = document.getElementById('hideSavedCheckbox').checked, showSavedOnly = document.getElementById('showSavedOnlyCheckbox').checked, showConflicts = document.getElementById('showConflictsCheckbox').checked, showResolved = document.getElementById('showResolvedCheckbox').checked, showClean = document.getElementById('showCleanCheckbox').checked, sortBy = document.getElementById('sortBy').value; filteredData = allData.filter(d => { const matchesSearch = d.normalizedName.toLowerCase().includes(query) || d.normalizedId.includes(query); if (!matchesSearch) return false; if (hideSaved && d.masterRecord) return false; if (showSavedOnly && !d.masterRecord) return false; const hasConflict = detectGlobalConflict(d), isResolved = d.resolvedLocally; if (showConflicts) { if (!hasConflict || isResolved) return false; } if (showResolved) { if (!isResolved) return false; } if (showClean) { if (hasConflict || isResolved || d.masterRecord) return false; } for (const [key, filterVal] of Object.entries(currentFilters)) { if (filterVal) { let match = false; for (const srcName in d.sources) { const val = d.sources[srcName][key]; if (val && String(val).trim() === filterVal) { match = true; break; } } if (!match && d.masterRecord) { const val = d.masterRecord[key]; if (val && String(val).trim() === filterVal) match = true; } if (!match) return false; } } return true; }); filteredData.sort((a, b) => { if (sortBy === 'name') return a.normalizedName.localeCompare(b.normalizedName); if (sortBy === 'id') return a.normalizedId.localeCompare(b.normalizedId); if (sortBy === 'status') return getStatusScore(a) - getStatusScore(b); return 0; }); currentPage = 1; updateStats(); renderList(); }
-      function changePage(direction) { const totalPages = Math.ceil(filteredData.length / itemsPerPage), newPage = currentPage + direction; if (newPage > 0 && newPage <= totalPages) { currentPage = newPage; renderList(); } }
-      function getStatusScore(item) { if (!item.masterRecord && !item.resolvedLocally && detectGlobalConflict(item)) return 1; if (item.resolvedLocally) return 2; if (!item.masterRecord) return 3; return 4; }
-      function renderList() { const container = document.getElementById('employeeList'), paginationDiv = document.getElementById('paginationControls'); container.innerHTML = ''; if(filteredData.length === 0) { container.innerHTML = '<p class="p-4 text-center text-gray-400">No records found.</p>'; paginationDiv.classList.add('hidden'); return; } const startIndex = (currentPage - 1) * itemsPerPage, endIndex = startIndex + itemsPerPage, pageData = filteredData.slice(startIndex, endIndex), totalPages = Math.ceil(filteredData.length / itemsPerPage); pageData.forEach(item => { const srcCount = Object.keys(item.sources).length, hasConflict = detectGlobalConflict(item) && !item.resolvedLocally, card = document.createElement('div'); card.className = `p-3 rounded border cursor-pointer hover:bg-blue-50 transition group bg-white border-l-4 ${hasConflict ? 'border-l-orange-400' : 'border-l-green-400'}`; card.onclick = () => selectEmployee(item, true); let statusBadge = ''; if (item.masterRecord) statusBadge = '<span class="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full font-medium">✓ Saved</span>'; else if (item.resolvedLocally) statusBadge = '<span class="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full font-medium">✓ Resolved</span>'; let bottomBadge = ''; const isHandled = item.masterRecord || item.resolvedLocally; if (isHandled) bottomBadge = '<span class="text-[10px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded font-medium border border-slate-200">Reviewed</span>'; else if (hasConflict) bottomBadge = '<span class="text-[10px] text-orange-600 bg-orange-100 px-2 py-0.5 rounded font-medium border border-orange-200">Conflict</span>'; card.innerHTML = `<div class="flex justify-between items-start"><div><h3 class="font-semibold text-gray-800">${item.normalizedName} ${statusBadge}</h3><p class="text-xs text-gray-500 font-mono">${item.normalizedId}</p></div><div class="flex gap-1">${sourceNames.map(src => `<div class="w-2 h-2 rounded-full ${item.sources[src.name] ? 'bg-blue-500' : 'bg-gray-200'}" title="${src.name}"></div>`).join('')}</div></div><div class="mt-2 flex justify-between items-center"><span class="text-[10px] text-gray-400 uppercase tracking-wide">${srcCount} Sources</span>${bottomBadge}</div>`; container.appendChild(card); }); if (totalPages > 1) { paginationDiv.classList.remove('hidden'); document.getElementById('pageIndicator').innerText = `Page ${currentPage} of ${totalPages}`; document.getElementById('prevPageBtn').disabled = currentPage === 1; document.getElementById('nextPageBtn').disabled = currentPage === totalPages; } else { paginationDiv.classList.add('hidden'); } }
-      function selectEmployee(record, isInitialSelection = false) { currentRecord = record; document.getElementById('emptyState').classList.add('hidden'); document.getElementById('mergeInterface').classList.remove('hidden'); document.getElementById('currentEmployeeName').innerText = record.normalizedName; document.getElementById('currentEmployeeID').innerText = record.normalizedId; if (isInitialSelection) { if (record.manualMergeData) finalMergeState = { ...record.manualMergeData }; else if (record.masterRecord) fields.forEach(field => finalMergeState[field] = record.masterRecord[field] || ""); else fields.forEach(field => { let val = ""; for (const src of sourceNames) { if (record.sources[src.name]?.[field]) { val = record.sources[src.name][field]; break; } } finalMergeState[field] = val; }); } renderBody(); }
+      // --- NEW: OVERWRITE FLAG ---
+      let overwriteConfirmed = false;
 
-      // --- NEW: VIEW HISTORY ---
+      const CACHE_KEY_DATA = 'dc_all_data_v16'; // Version bump for safety
+      const CACHE_KEY_FILTERS = 'dc_filters_v16';
+      const CACHE_KEY_TIME = 'dc_last_updated';
+
+      const FIELD_GROUPS = {
+        identity: ["Employee ID", "Full Name", "Last Name", "First Name", "Middle Name", "Suffix", "Nickname", "Gender", "Date of Birth", "Civil Status"],
+        job: ["Company Name", "Division", "Group", "Department", "Section", "Work Location", "Position", "Job Group", "Superior ID", "Superior Name"],
+        status: ["Active", "Employment Type", "Date Hired", "Date Regular", "Date Resigned", "Reason for Leaving"]
+      };
+
+      window.onload = () => {
+        if (!loadFromCache()) {
+          loadData(true);
+        }
+      };
+
+      function loadFromCache() {
+        try {
+          const localData = localStorage.getItem(CACHE_KEY_DATA);
+          const localFilters = localStorage.getItem(CACHE_KEY_FILTERS);
+          const lastTime = localStorage.getItem(CACHE_KEY_TIME);
+          if (localData && localFilters) {
+            const parsedData = JSON.parse(localData);
+            fullFilterOptions = JSON.parse(localFilters);
+            allData = parsedData.data;
+            fields = parsedData.fields;
+            sourceNames = parsedData.sourceNames;
+            document.getElementById('lastUpdated').innerText = `Loaded cached data: ${lastTime}`;
+            document.getElementById('loadingState').classList.add('hidden');
+            renderFilterInputs();
+            updateStats();
+            filterList();
+            showToast("Loaded data from cache (Instant)");
+            return true;
+          }
+        } catch (e) {
+          console.error("Cache load failed", e);
+        }
+        return false;
+      }
+
+      function loadData(force = false) {
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('lastUpdated').innerText = "Scanning sheets...";
+        google.script.run.withSuccessHandler(filters => {
+          fullFilterOptions = filters;
+          try {
+            localStorage.setItem(CACHE_KEY_FILTERS, JSON.stringify(filters));
+          } catch (e) {}
+          renderFilterInputs();
+          google.script.run.withSuccessHandler(onDataLoaded).withFailureHandler(showError).getConsolidatedData({});
+        }).getFilterOptions();
+      }
+
+      function onDataLoaded(response) {
+        allData = response.data;
+        fields = response.headers;
+        sourceNames = response.sourceNames;
+        const now = new Date().toLocaleTimeString();
+        try {
+          localStorage.setItem(CACHE_KEY_DATA, JSON.stringify({
+            data: allData,
+            fields: fields,
+            sourceNames: sourceNames
+          }));
+          localStorage.setItem(CACHE_KEY_TIME, now);
+        } catch (e) {
+          console.warn("Storage full, cannot cache.");
+        }
+        document.getElementById('lastUpdated').innerText = `Last updated: ${now}`;
+        document.getElementById('loadingState').classList.add('hidden');
+        updateStats();
+        filterList();
+        showToast("Data refreshed successfully");
+      }
+
+      function updateLocalCache() {
+        try {
+          const currentCache = JSON.parse(localStorage.getItem(CACHE_KEY_DATA));
+          currentCache.data = allData;
+          localStorage.setItem(CACHE_KEY_DATA, JSON.stringify(currentCache));
+        } catch (e) {
+          console.error("Failed to update cache", e);
+        }
+      }
+
+      function updateStats() {
+        const total = filteredData.length;
+        const saved = filteredData.filter(d => d.masterRecord).length;
+        const percent = total === 0 ? 0 : Math.round((saved / total) * 100);
+        document.getElementById('progressText').innerText = `${saved} / ${total} (${percent}%)`;
+        document.getElementById('progressBar').style.width = `${percent}%`;
+      }
+
+      function renderFilterInputs() {
+        const container = document.getElementById('filterContainer');
+        container.innerHTML = '';
+        const filterKeys = ['Work Location', 'Division', 'Group', 'Department', 'Section'];
+        filterKeys.forEach(field => {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'relative min-w-[160px] shrink-0';
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = field;
+          input.value = currentFilters[field] || '';
+          input.className = 'w-full text-xs p-2 pr-8 border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 shadow-sm text-gray-600 font-medium cursor-pointer search-input';
+          input.id = `input-${field}`;
+          input.onclick = (e) => {
+            e.stopPropagation();
+            openGlobalDropdown(field, input);
+          };
+          input.oninput = (e) => {
+            openGlobalDropdown(field, input, e.target.value);
+          };
+          const icon = document.createElement('i');
+          icon.className = 'ph ph-caret-down absolute right-2 top-2.5 text-gray-400 pointer-events-none';
+          wrapper.appendChild(input);
+          wrapper.appendChild(icon);
+          container.appendChild(wrapper);
+        });
+      }
+
+      function openGlobalDropdown(field, inputEl, searchText = "") {
+        activeFilterField = field;
+        const globalDrop = document.getElementById('globalDropdown');
+        const rect = inputEl.getBoundingClientRect();
+        globalDrop.style.top = (rect.bottom + 5) + 'px';
+        globalDrop.style.left = rect.left + 'px';
+        globalDrop.style.width = rect.width + 'px';
+        globalDrop.innerHTML = '';
+        const items = getDependentOptions(field);
+        if (!searchText) {
+          const allOpt = document.createElement('div');
+          allOpt.textContent = `All ${field}s`;
+          allOpt.className = 'p-2 hover:bg-blue-50 text-xs cursor-pointer text-gray-500 italic border-b';
+          allOpt.onclick = () => selectGlobalOption(field, '');
+          globalDrop.appendChild(allOpt);
+        }
+        const lowerSearch = searchText.toLowerCase();
+        let count = 0;
+        items.forEach(opt => {
+          if (opt === '---') {
+            if (!searchText) {
+              const sep = document.createElement('div');
+              sep.textContent = '--- Other ---';
+              sep.className = 'p-1 text-[10px] text-gray-400 font-bold text-center uppercase bg-gray-50';
+              globalDrop.appendChild(sep);
+            }
+          } else {
+            if (opt.toLowerCase().includes(lowerSearch)) {
+              const item = document.createElement('div');
+              item.textContent = opt;
+              item.className = 'p-2 hover:bg-blue-50 text-xs cursor-pointer text-gray-700 dropdown-item';
+              item.onclick = () => selectGlobalOption(field, opt);
+              globalDrop.appendChild(item);
+              count++;
+            }
+          }
+        });
+        if (count === 0 && searchText) globalDrop.innerHTML = '<div class="p-2 text-xs text-gray-400 italic">No matches</div>';
+        globalDrop.classList.remove('hidden');
+      }
+
+      function selectGlobalOption(field, value) {
+        currentFilters[field] = value;
+        document.getElementById(`input-${field}`).value = value;
+        if (field === 'Division') {
+          currentFilters['Group'] = '';
+          currentFilters['Department'] = '';
+          currentFilters['Section'] = '';
+        } else if (field === 'Group') {
+          currentFilters['Department'] = '';
+          currentFilters['Section'] = '';
+        } else if (field === 'Department') {
+          currentFilters['Section'] = '';
+        }
+        renderFilterInputs();
+        closeGlobalDropdown();
+        filterList();
+      }
+
+      function closeGlobalDropdown(e) {
+        if (!e || (e.target.id !== 'globalDropdown' && !e.target.closest('#globalDropdown'))) {
+          document.getElementById('globalDropdown').classList.add('hidden');
+        }
+      }
+
+      function getDependentOptions(field) {
+        if (!fullFilterOptions) return [];
+        if (field === 'Work Location') return fullFilterOptions.raw['Work Location'] || [];
+        const hierarchy = fullFilterOptions.orgChart || [];
+        const rawDataList = fullFilterOptions.raw[field] || [];
+        let validOrgValues = new Set();
+        hierarchy.filter(row => {
+          if (field === 'Group' && currentFilters['Division'] && row.Division !== currentFilters['Division']) return false;
+          if (field === 'Department' && ((currentFilters['Division'] && row.Division !== currentFilters['Division']) || (currentFilters['Group'] && row.Group !== currentFilters['Group']))) return false;
+          if (field === 'Section' && ((currentFilters['Division'] && row.Division !== currentFilters['Division']) || (currentFilters['Group'] && row.Group !== currentFilters['Group']) || (currentFilters['Department'] && row.Department !== currentFilters['Department']))) return false;
+          return true;
+        }).forEach(row => {
+          if (row[field]) validOrgValues.add(row[field]);
+        });
+        const sortedOrg = Array.from(validOrgValues).sort();
+        const others = rawDataList.filter(val => !validOrgValues.has(val));
+        return others.length > 0 ? [...sortedOrg, '---', ...others] : sortedOrg;
+      }
+
+      function resetView() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('sortBy').value = 'status';
+        document.getElementById('hideSavedCheckbox').checked = false;
+        document.getElementById('showSavedOnlyCheckbox').checked = false;
+        document.getElementById('showConflictsCheckbox').checked = false;
+        document.getElementById('showResolvedCheckbox').checked = false;
+        document.getElementById('highlightMissingCheckbox').checked = false;
+        document.getElementById('showCleanCheckbox').checked = false;
+        highlightMissingMode = false;
+        currentFilters = {};
+        renderFilterInputs();
+        filterList();
+        showToast("View Reset");
+      }
+
+      function syncInputsToState() {
+        if (!currentRecord) return;
+        fields.forEach(field => {
+          const input = document.getElementById(`final-${field}`);
+          if (input) finalMergeState[field] = input.value;
+        });
+      }
+
+      function filterList() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const hideSaved = document.getElementById('hideSavedCheckbox').checked;
+        const showSavedOnly = document.getElementById('showSavedOnlyCheckbox').checked;
+        const showConflicts = document.getElementById('showConflictsCheckbox').checked;
+        const showResolved = document.getElementById('showResolvedCheckbox').checked;
+        const showClean = document.getElementById('showCleanCheckbox').checked;
+        const sortBy = document.getElementById('sortBy').value;
+
+        filteredData = allData.filter(d => {
+          const matchesSearch = d.normalizedName.toLowerCase().includes(query) || d.normalizedId.includes(query);
+          if (!matchesSearch) return false;
+          if (hideSaved && d.masterRecord) return false;
+          if (showSavedOnly && !d.masterRecord) return false;
+          const hasConflict = detectGlobalConflict(d);
+          const isResolved = d.resolvedLocally;
+          if (showConflicts) {
+            if (!hasConflict || isResolved) return false;
+          }
+          if (showResolved) {
+            if (!isResolved) return false;
+          }
+          if (showClean) {
+            if (hasConflict || isResolved || d.masterRecord) return false;
+          }
+          for (const [key, filterVal] of Object.entries(currentFilters)) {
+            if (filterVal) {
+              let match = false;
+              for (const srcName in d.sources) {
+                const val = d.sources[srcName][key];
+                if (val && String(val).trim() === filterVal) {
+                  match = true;
+                  break;
+                }
+              }
+              if (!match && d.masterRecord) {
+                const val = d.masterRecord[key];
+                if (val && String(val).trim() === filterVal) match = true;
+              }
+              if (!match) return false;
+            }
+          }
+          return true;
+        });
+
+        filteredData.sort((a, b) => {
+          if (sortBy === 'name') return a.normalizedName.localeCompare(b.normalizedName);
+          if (sortBy === 'id') return a.normalizedId.localeCompare(b.normalizedId);
+          if (sortBy === 'status') return getStatusScore(a) - getStatusScore(b);
+          return 0;
+        });
+        currentPage = 1;
+        updateStats();
+        renderList();
+      }
+
+      function changePage(direction) {
+        const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+        const newPage = currentPage + direction;
+        if (newPage > 0 && newPage <= totalPages) {
+          currentPage = newPage;
+          renderList();
+        }
+      }
+
+      function getStatusScore(item) {
+        if (!item.masterRecord && !item.resolvedLocally && detectGlobalConflict(item)) return 1;
+        if (item.resolvedLocally) return 2;
+        if (!item.masterRecord) return 3;
+        return 4;
+      }
+
+      function renderList() {
+        const container = document.getElementById('employeeList');
+        const paginationDiv = document.getElementById('paginationControls');
+        container.innerHTML = '';
+        if (filteredData.length === 0) {
+          container.innerHTML = '<p class="p-4 text-center text-gray-400">No records found.</p>';
+          paginationDiv.classList.add('hidden');
+          return;
+        }
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageData = filteredData.slice(startIndex, endIndex);
+        const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+        pageData.forEach(item => {
+          const srcCount = Object.keys(item.sources).length;
+          const hasConflict = detectGlobalConflict(item) && !item.resolvedLocally;
+          const card = document.createElement('div');
+          card.className = `p-3 rounded border cursor-pointer hover:bg-blue-50 transition group bg-white border-l-4 ${hasConflict ? 'border-l-orange-400' : 'border-l-green-400'}`;
+          card.onclick = () => selectEmployee(item, true);
+          let statusBadge = '';
+          if (item.masterRecord) statusBadge = '<span class="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full font-medium">✓ Saved</span>';
+          else if (item.resolvedLocally) statusBadge = '<span class="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full font-medium">✓ Resolved</span>';
+          let bottomBadge = '';
+          const isHandled = item.masterRecord || item.resolvedLocally;
+          if (isHandled) {
+            bottomBadge = '<span class="text-[10px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded font-medium border border-slate-200">Reviewed</span>';
+          } else if (hasConflict) {
+            bottomBadge = '<span class="text-[10px] text-orange-600 bg-orange-100 px-2 py-0.5 rounded font-medium border border-orange-200">Conflict</span>';
+          }
+          card.innerHTML = `<div class="flex justify-between items-start"><div><h3 class="font-semibold text-gray-800">${item.normalizedName} ${statusBadge}</h3><p class="text-xs text-gray-500 font-mono">${item.normalizedId}</p></div><div class="flex gap-1">${sourceNames.map(src => `<div class="w-2 h-2 rounded-full ${item.sources[src.name] ? 'bg-blue-500' : 'bg-gray-200'}" title="${src.name}"></div>`).join('')}</div></div><div class="mt-2 flex justify-between items-center"><span class="text-[10px] text-gray-400 uppercase tracking-wide">${srcCount} Sources</span>${bottomBadge}</div>`;
+          container.appendChild(card);
+        });
+        if (totalPages > 1) {
+          paginationDiv.classList.remove('hidden');
+          document.getElementById('pageIndicator').innerText = `Page ${currentPage} of ${totalPages}`;
+          document.getElementById('prevPageBtn').disabled = currentPage === 1;
+          document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+        } else {
+          paginationDiv.classList.add('hidden');
+        }
+      }
+
+      function selectEmployee(record, isInitialSelection = false) {
+        // --- FIX: Reset Overwrite Flag on New Selection ---
+        overwriteConfirmed = false;
+
+        currentRecord = record;
+        document.getElementById('emptyState').classList.add('hidden');
+        document.getElementById('mergeInterface').classList.remove('hidden');
+        document.getElementById('currentEmployeeName').innerText = record.normalizedName;
+        document.getElementById('currentEmployeeID').innerText = record.normalizedId;
+        if (isInitialSelection) {
+          if (record.manualMergeData) finalMergeState = { ...record.manualMergeData
+          };
+          else if (record.masterRecord) fields.forEach(field => finalMergeState[field] = record.masterRecord[field] || "");
+          else fields.forEach(field => {
+            let val = "";
+            for (const src of sourceNames) {
+              if (record.sources[src.name]?.[field]) {
+                val = record.sources[src.name][field];
+                break;
+              }
+            }
+            finalMergeState[field] = val;
+          });
+        }
+        renderBody();
+      }
+
+      function renderBody() {
+        const tbody = document.getElementById('compareTableBody');
+        const thead = document.getElementById('tableHeader');
+        let headerHtml = `<tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider"><th class="p-4 font-medium w-48 sticky top-0 left-0 z-50 border-r border-b bg-gray-50 shadow-sm">Field</th>`;
+        const colors = ['text-blue-700 bg-blue-50', 'text-purple-700 bg-purple-50', 'text-green-700 bg-green-50'];
+        sourceNames.forEach((src, index) => {
+          headerHtml += `<th class="p-4 font-medium ${colors[index % colors.length]} min-w-[200px] border-b group relative sticky top-0 z-40 backdrop-blur-md bg-opacity-95"><div class="flex items-center justify-between"><a href="${src.url}" target="_blank" class="hover:underline flex items-center gap-1" title="Open Source Sheet">${src.name} <i class="ph ph-arrow-square-out text-xs opacity-50 group-hover:opacity-100"></i></a><button onclick="copyFromSource('${src.name}')" class="p-1 bg-white rounded border hover:bg-gray-50 text-[10px] text-gray-500 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition"><i class="ph ph-copy"></i> Use All</button></div></th>`;
+        });
+        headerHtml += `<th class="p-4 font-medium bg-gray-800 text-white min-w-[250px] sticky top-0 right-0 z-50 shadow-xl border-b">Final Merged Data</th></tr>`;
+        thead.innerHTML = headerHtml;
+        const filterMode = document.getElementById('fieldFilterSelect').value;
+        const visibleFields = filterMode === 'all' ? fields : (fields.filter(f => FIELD_GROUPS[filterMode]?.includes(f)));
+        tbody.innerHTML = '';
+        visibleFields.forEach(field => {
+          const values = sourceNames.map(src => currentRecord.sources[src.name]?.[field] || "");
+          const nonEmpty = values.filter(v => v !== "");
+          const isIdentical = nonEmpty.every(v => v === nonEmpty[0]);
+          const row = document.createElement('tr');
+          row.className = 'border-b';
+          const baseBg = isIdentical ? 'bg-white' : 'bg-orange-50';
+          let cellsHtml = `<td class="p-2 border-r cursor-pointer hover:bg-gray-100 transition relative group ${baseBg} h-16 align-top font-medium text-gray-600 border-r sticky left-0 z-10">${field}</td>`;
+          sourceNames.forEach(src => {
+            cellsHtml += renderCell(field, currentRecord.sources[src.name]?.[field] || "");
+          });
+          const finalVal = finalMergeState[field] || '';
+          
+          // --- INSTANT HIGHLIGHT (INLINE STYLE) ---
+          const isMissing = highlightMissingMode && (!finalVal || String(finalVal).trim() === '' || finalVal === 'N/A');
+          const styleAttr = isMissing ? 'background-color: #fee2e2 !important; border: 2px solid #ef4444 !important; color: #7f1d1d !important;' : '';
+          const inputClass = isMissing ? 'highlight-error' : 'bg-white border-gray-300 focus:ring-blue-500 text-gray-900';
+          
+          cellsHtml += `<td class="p-2 border-l sticky right-0 z-10 ${isIdentical ? 'bg-white' : 'bg-orange-50'} h-16 align-top"><textarea id="final-${field}" rows="3" oninput="updateFinal('${field}', this.value)" style="${styleAttr}" class="w-full p-2 border rounded text-xs font-medium shadow-inner thin-scrollbar resize-none ${inputClass}">${finalVal}</textarea></td>`;
+          row.innerHTML = cellsHtml;
+          tbody.appendChild(row);
+        });
+      }
+
+      function renderCell(field, value) {
+        const values = sourceNames.map(src => currentRecord.sources[src.name]?.[field] || "");
+        const nonEmpty = values.filter(v => v !== "");
+        const isIdentical = nonEmpty.every(v => v === nonEmpty[0]);
+        const baseBg = isIdentical ? 'bg-white' : 'bg-orange-50';
+        if (!value) return `<td class="p-2 text-gray-300 italic text-xs border-r ${baseBg} h-16 align-top">Missing</td>`;
+        const isSelected = finalMergeState[field] === value;
+        const safeValue = value.toString().replace(/'/g, "\\'");
+        return `<td class="p-2 border-r cursor-pointer hover:bg-gray-100 transition relative group ${isSelected ? 'selected-cell' : baseBg} h-16 align-top" onclick="handleCellClick('${field}', '${safeValue}')"><div class="w-full h-full max-h-[3.5rem] overflow-y-auto whitespace-normal break-words text-xs leading-tight thin-scrollbar" title="${value}">${value}</div><div class="hidden group-hover:flex absolute top-1 right-1 bg-white shadow rounded px-1 text-[10px] text-gray-500">Use</div></td>`;
+      }
+
+      function copyFromSource(sourceName) {
+        if (!currentRecord || !currentRecord.sources[sourceName]) return;
+        fields.forEach(f => {
+          const val = currentRecord.sources[sourceName][f];
+          if (val && val !== "N/A") finalMergeState[f] = val;
+        });
+        renderBody();
+        showToast(`Copied all data from ${sourceName}`, true);
+        lastActionState = {
+          id: currentRecord.normalizedId,
+          recordRef: currentRecord,
+          wasResolved: currentRecord.resolvedLocally,
+          wasMaster: null
+        };
+      }
+
+      function autoResolve() {
+        fields.forEach(field => {
+          const counts = {};
+          let maxVal = null;
+          let maxCount = 0;
+          sourceNames.forEach(src => {
+            const val = currentRecord.sources[src.name]?.[field];
+            if (val && val !== "N/A" && val !== "") {
+              const sVal = String(val);
+              counts[sVal] = (counts[sVal] || 0) + 1;
+              if (counts[sVal] > maxCount) {
+                maxCount = counts[sVal];
+                maxVal = sVal;
+              }
+            }
+          });
+          if (maxVal !== null) finalMergeState[field] = maxVal;
+        });
+        renderBody();
+        showToast("Auto-resolved all fields!");
+      }
+
+      function resetMerge() {
+        if (!currentRecord) return;
+        delete currentRecord.manualMergeData;
+        delete currentRecord.resolvedLocally;
+        selectEmployee(currentRecord, true);
+        filterList();
+        showToast("Reset to original state.");
+      }
+
+      function markResolved() {
+        if (!currentRecord) return;
+        syncInputsToState();
+        currentRecord.resolvedLocally = true;
+        currentRecord.manualMergeData = { ...finalMergeState
+        };
+        updateLocalCache();
+        filterList();
+        showToast("Marked as resolved locally.");
+      }
+
+      function saveAllResolved() {
+        const recordsToSave = allData.filter(d => !d.masterRecord && d.resolvedLocally).map(d => d.manualMergeData);
+        if (recordsToSave.length === 0) {
+          showToast("No 'Resolved' records found to save. Please mark records as resolved first.");
+          return;
+        }
+        const btn = document.getElementById('bulkSaveBtn');
+        const origText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<div class="loader w-4 h-4 border-white border-t-transparent"></div> Saving ${recordsToSave.length}...`;
+        google.script.run.withSuccessHandler(res => {
+          showToast(res.message);
+          allData.forEach(d => {
+            if (!d.masterRecord && d.resolvedLocally) {
+              d.masterRecord = d.manualMergeData;
+              delete d.resolvedLocally;
+              delete d.manualMergeData;
+            }
+          });
+          updateLocalCache();
+          updateStats();
+          filterList();
+          btn.disabled = false;
+          btn.innerHTML = origText;
+        }).withFailureHandler(err => {
+          alert("Error: " + err.message);
+          btn.disabled = false;
+          btn.innerHTML = origText;
+        }).saveBulkToMaster(recordsToSave);
+      }
+
+      function handleCellClick(field, value) {
+        if (field === 'Active') {
+          const upper = String(value).toUpperCase();
+          if (['YES', 'TRUE', 'ACTIVE'].includes(upper)) {
+            finalMergeState['Date Resigned'] = '';
+            finalMergeState['Reason for Leaving'] = '';
+          }
+        }
+        
+        // --- FIX: Check Overwrite Flag ---
+        if (currentRecord.masterRecord && finalMergeState[field] !== value && !overwriteConfirmed) {
+          showConfirmation(() => {
+            overwriteConfirmed = true; // Set flag
+            finalMergeState[field] = value;
+            renderBody();
+          });
+        } else {
+          finalMergeState[field] = value;
+          renderBody();
+        }
+      }
+
+      function updateFinal(field, value) {
+        const updateLogic = () => {
+          finalMergeState[field] = value;
+          // DYNAMIC HIGHLIGHTER UPDATE
+          if (highlightMissingMode) {
+            const input = document.getElementById(`final-${field}`);
+            if (input) {
+              if (!value || String(value).trim() === '' || value === 'N/A') {
+                input.style.cssText = 'background-color: #fee2e2 !important; border: 2px solid #ef4444 !important; color: #7f1d1d !important;';
+              } else {
+                input.style.cssText = '';
+              }
+            }
+          }
+          if (field === 'Active') {
+            const upper = String(value).toUpperCase();
+            if (['YES', 'TRUE', 'ACTIVE'].includes(upper)) {
+              finalMergeState['Date Resigned'] = '';
+              finalMergeState['Reason for Leaving'] = '';
+              const dr = document.getElementById('final-Date Resigned');
+              if (dr) dr.value = '';
+              const rl = document.getElementById('final-Reason for Leaving');
+              if (rl) rl.value = '';
+            }
+          }
+        };
+        
+        // --- FIX: Check Overwrite Flag ---
+        if (currentRecord.masterRecord && !overwriteConfirmed) {
+          showConfirmation(() => {
+            overwriteConfirmed = true; // Set flag
+            updateLogic();
+          }, () => {
+            document.getElementById(`final-${field}`).value = finalMergeState[field];
+          });
+        } else {
+          updateLogic();
+        }
+      }
+
+      function showConfirmation(onYes, onNo = () => {}) {
+        const modal = document.getElementById('customModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modalCallback = (confirmed) => {
+          if (confirmed) onYes();
+          else onNo();
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+        };
+      }
+
+      function closeModal(result) {
+        if (modalCallback) modalCallback(result);
+      }
+
+      function validateRecord(data) {
+        const active = String(data['Active'] || '').toUpperCase();
+        if (['NO', 'FALSE', 'INACTIVE'].includes(active)) {
+          if (!data['Date Resigned'] || data['Date Resigned'] === 'N/A') return "Inactive employees MUST have a Date Resigned.";
+          if (!data['Reason for Leaving'] || data['Reason for Leaving'] === 'N/A') return "Inactive employees MUST have a Reason for Leaving.";
+        }
+        return null;
+      }
+
+      function saveMerge() {
+        syncInputsToState();
+        const error = validateRecord(finalMergeState);
+        if (error) {
+          alert(error);
+          return;
+        }
+        lastActionState = {
+          id: currentRecord.normalizedId,
+          recordRef: currentRecord,
+          wasResolved: currentRecord.resolvedLocally,
+          wasMaster: null
+        };
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        btn.innerHTML = `<div class="loader w-4 h-4 border-white border-t-transparent"></div> Saving...`;
+        google.script.run.withSuccessHandler(res => {
+          if (currentRecord) {
+            currentRecord.masterRecord = { ...finalMergeState
+            };
+            delete currentRecord.resolvedLocally;
+            delete currentRecord.manualMergeData;
+          }
+          // --- FIX: Reset flag on successful save ---
+          overwriteConfirmed = false;
+          
+          updateLocalCache();
+          updateStats();
+          filterList();
+          document.getElementById('mergeInterface').classList.add('hidden');
+          document.getElementById('emptyState').classList.remove('hidden');
+          btn.disabled = false;
+          btn.innerHTML = `<i class="ph ph-check-circle"></i> Save to Master Database`;
+          showToast(res.message, true);
+        }).withFailureHandler(err => {
+          alert(err.message);
+          btn.disabled = false;
+          btn.innerHTML = `<i class="ph ph-check-circle"></i> Save to Master Database`;
+        }).saveToMaster(finalMergeState);
+      }
+
+      function undoLastAction() {
+        if (!lastActionState) return;
+        const {
+          recordRef,
+          wasResolved
+        } = lastActionState;
+        delete recordRef.masterRecord;
+        if (wasResolved) recordRef.resolvedLocally = true;
+        updateLocalCache();
+        updateStats();
+        filterList();
+        selectEmployee(recordRef);
+        document.getElementById('toast').classList.add('translate-y-20', 'opacity-0');
+        alert("Undo Successful. Note: Data remains in Sheet until overwritten.");
+      }
+
+      function detectGlobalConflict(item) {
+        let conflict = false;
+        fields.forEach(f => {
+          const vals = new Set();
+          sourceNames.forEach(src => {
+            const sName = src.name || src;
+            if (item.sources[sName]?.[f]) vals.add(item.sources[sName][f]);
+          });
+          if (vals.size > 1) conflict = true;
+        });
+        return conflict;
+      }
+
+      function showToast(msg, allowUndo = false) {
+        const el = document.getElementById('toast');
+        document.getElementById('toastMsg').innerText = msg;
+        const undoBtn = document.getElementById('toastUndoBtn');
+        if (allowUndo) undoBtn.classList.remove('hidden');
+        else undoBtn.classList.add('hidden');
+        el.classList.remove('translate-y-20', 'opacity-0');
+        setTimeout(() => {
+          el.classList.add('translate-y-20', 'opacity-0');
+        }, 5000);
+      }
+
+      function showError(err) {
+        alert("Error: " + err.message);
+        document.getElementById('loadingState').classList.add('hidden');
+      }
+
+      // --- NEW: History View Function ---
       function viewHistory() {
           if(!currentRecord) return;
           const modal = document.getElementById('historyModal');
           const content = document.getElementById('historyContent');
           modal.classList.remove('hidden'); modal.classList.add('flex');
           content.innerHTML = '<div class="text-center text-gray-400 p-4">Loading history...</div>';
-
           google.script.run.withSuccessHandler(logs => {
-              if(logs.length === 0) {
-                  content.innerHTML = '<div class="text-center text-gray-400 p-4">No history found for this employee.</div>';
-                  return;
-              }
+              if(logs.length === 0) { content.innerHTML = '<div class="text-center text-gray-400 p-4">No history found.</div>'; return; }
               let html = '';
               logs.forEach(log => {
-                  html += `
-                  <div class="text-xs p-3 border-b border-gray-100 last:border-0">
-                      <div class="flex justify-between mb-1">
-                          <span class="font-bold text-gray-700">${log.action}</span>
-                          <span class="text-gray-400">${new Date(log.timestamp).toLocaleString()}</span>
-                      </div>
-                      <div class="text-gray-600 mb-1">${log.details}</div>
-                      <div class="text-[10px] text-gray-400">By: ${log.user}</div>
-                  </div>`;
+                  html += `<div class="text-xs p-3 border-b border-gray-100 last:border-0"><div class="flex justify-between mb-1"><span class="font-bold text-gray-700">${log.action}</span><span class="text-gray-400">${new Date(log.timestamp).toLocaleString()}</span></div><div class="text-gray-600 mb-1">${log.details}</div><div class="text-[10px] text-gray-400">By: ${log.user}</div></div>`;
               });
               content.innerHTML = html;
-          }).withFailureHandler(err => {
-              content.innerHTML = `<div class="text-red-500 p-4">Error: ${err.message}</div>`;
-          }).getEmployeeLogs(currentRecord.normalizedId);
+          }).withFailureHandler(err => { content.innerHTML = `<div class="text-red-500 p-4">Error: ${err.message}</div>`; }).getEmployeeLogs(currentRecord.normalizedId);
       }
       
-      // --- NEW: BULK FIX MODAL ---
+      // --- NEW: Bulk Fix Functions ---
       function openBulkFixModal() {
-          // Populate Field Dropdown
           const sel = document.getElementById('bulkField');
           sel.innerHTML = fields.map(f => `<option value="${f}">${f}</option>`).join('');
           document.getElementById('bulkFixModal').classList.remove('hidden');
@@ -268,34 +1051,16 @@
           const field = document.getElementById('bulkField').value;
           const findTxt = document.getElementById('bulkFind').value;
           const replaceTxt = document.getElementById('bulkReplace').value;
-
           if(!findTxt) { alert("Please enter text to find."); return; }
-
           let count = 0;
-          // Iterate filtered list
           filteredData.forEach(record => {
-              // Skip if already saved (unless we want to edit master? Safer to edit unresolved)
               if (record.masterRecord) return; 
-
-              // Calculate current value if not manually set
               let currentVal = "";
-              if (record.manualMergeData && record.manualMergeData[field]) {
-                  currentVal = record.manualMergeData[field];
-              } else {
-                  // Default logic
-                  for (const src of sourceNames) { if (record.sources[src.name]?.[field]) { currentVal = record.sources[src.name][field]; break; } }
-              }
-              
-              // Check Match
+              if (record.manualMergeData && record.manualMergeData[field]) { currentVal = record.manualMergeData[field]; } 
+              else { for (const src of sourceNames) { if (record.sources[src.name]?.[field]) { currentVal = record.sources[src.name][field]; break; } } }
               if (String(currentVal).includes(findTxt)) {
-                  // Replace
                   const newVal = String(currentVal).replace(new RegExp(findTxt, 'g'), replaceTxt);
-                  
-                  // Init manual data if needed
                   if (!record.manualMergeData) {
-                      // Need to prepopulate other fields to avoid blanks? 
-                      // Ideally yes, but for speed, let's just set this field and let others default.
-                      // Better: Snap current state.
                       record.manualMergeData = {};
                       fields.forEach(f => {
                           let val = "";
@@ -303,96 +1068,23 @@
                           record.manualMergeData[f] = val;
                       });
                   }
-                  
                   record.manualMergeData[field] = newVal;
                   record.resolvedLocally = true;
                   count++;
               }
           });
-
           if (count > 0) {
-              updateLocalCache();
-              updateStats();
-              filterList(); // Refresh view
-              if(currentRecord) selectEmployee(currentRecord); // Refresh current view if open
+              updateLocalCache(); updateStats(); filterList();
+              if(currentRecord) selectEmployee(currentRecord); 
               showToast(`Updated ${count} records.`);
               document.getElementById('bulkFixModal').classList.add('hidden');
-          } else {
-              alert("No matching records found in the current view.");
-          }
+          } else { alert("No matching records found."); }
       }
 
-      function renderBody() {
-        const tbody = document.getElementById('compareTableBody');
-        const thead = document.getElementById('tableHeader');
-        
-        let headerHtml = `<tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider"><th class="p-4 font-medium w-48 sticky top-0 left-0 z-50 border-r border-b bg-gray-50 shadow-sm">Field</th>`;
-        const colors = ['text-blue-700 bg-blue-50', 'text-purple-700 bg-purple-50', 'text-green-700 bg-green-50'];
-        
-        sourceNames.forEach((src, index) => { 
-            headerHtml += `<th class="p-4 font-medium ${colors[index % colors.length]} min-w-[200px] border-b group relative sticky top-0 z-40 backdrop-blur-md bg-opacity-95">
-                            <div class="flex items-center justify-between">
-                                <a href="${src.url}" target="_blank" class="hover:underline flex items-center gap-1" title="Open Source Sheet">
-                                    ${src.name} <i class="ph ph-arrow-square-out text-xs opacity-50 group-hover:opacity-100"></i>
-                                </a>
-                                <button onclick="copyFromSource('${src.name}')" class="p-1 bg-white rounded border hover:bg-gray-50 text-[10px] text-gray-500 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                                    <i class="ph ph-copy"></i> Use All
-                                </button>
-                            </div>
-                           </th>`; 
-        });
-        headerHtml += `<th class="p-4 font-medium bg-gray-800 text-white min-w-[250px] sticky top-0 right-0 z-50 shadow-xl border-b">Final Merged Data</th></tr>`;
-        thead.innerHTML = headerHtml;
-
-        const filterMode = document.getElementById('fieldFilterSelect').value;
-        const visibleFields = filterMode === 'all' ? fields : (fields.filter(f => FIELD_GROUPS[filterMode]?.includes(f)));
-
-        tbody.innerHTML = '';
-        visibleFields.forEach(field => {
-          const values = sourceNames.map(src => currentRecord.sources[src.name]?.[field] || "");
-          const nonEmpty = values.filter(v => v !== "");
-          const isIdentical = nonEmpty.every(v => v === nonEmpty[0]);
-          const row = document.createElement('tr');
-          row.className = 'border-b';
-          
-          const baseBg = isIdentical ? 'bg-white' : 'bg-orange-50';
-
-          let cellsHtml = `<td class="p-2 border-r cursor-pointer hover:bg-gray-100 transition relative group ${baseBg} h-16 align-top font-medium text-gray-600 border-r sticky left-0 z-10">${field}</td>`;
-          sourceNames.forEach(src => { cellsHtml += renderCell(field, currentRecord.sources[src.name]?.[field] || ""); });
-          
-          const finalVal = finalMergeState[field] || '';
-          const isMissing = highlightMissingMode && (!finalVal || String(finalVal).trim() === '' || finalVal === 'N/A');
-          
-          const styleAttr = isMissing ? 'background-color: #fee2e2 !important; border: 2px solid #ef4444 !important; color: #7f1d1d !important;' : '';
-          const inputClass = isMissing ? 'highlight-error' : 'bg-white border-gray-300 focus:ring-blue-500 text-gray-900';
-
-          cellsHtml += `<td class="p-2 border-l sticky right-0 z-10 ${isIdentical ? 'bg-white' : 'bg-orange-50'} h-16 align-top">
-                          <textarea id="final-${field}" rows="3" oninput="updateFinal('${field}', this.value)" 
-                              style="${styleAttr}"
-                              class="w-full p-2 border rounded text-xs font-medium shadow-inner thin-scrollbar resize-none ${inputClass}">${finalVal}</textarea>
-                        </td>`;
-          row.innerHTML = cellsHtml;
-          tbody.appendChild(row);
-        });
+      function toggleHighlight() {
+        highlightMissingMode = document.getElementById('highlightMissingCheckbox').checked;
+        if (currentRecord) renderBody();
       }
-
-      function renderCell(field, value) { const values = sourceNames.map(src => currentRecord.sources[src.name]?.[field] || ""), nonEmpty = values.filter(v => v !== ""), isIdentical = nonEmpty.every(v => v === nonEmpty[0]), baseBg = isIdentical ? 'bg-white' : 'bg-orange-50'; if(!value) return `<td class="p-2 text-gray-300 italic text-xs border-r ${baseBg} h-16 align-top">Missing</td>`; const isSelected = finalMergeState[field] === value, safeValue = value.toString().replace(/'/g, "\\'"); return `<td class="p-2 border-r cursor-pointer hover:bg-gray-100 transition relative group ${isSelected ? 'selected-cell' : baseBg} h-16 align-top" onclick="handleCellClick('${field}', '${safeValue}')"><div class="w-full h-full max-h-[3.5rem] overflow-y-auto whitespace-normal break-words text-xs leading-tight thin-scrollbar" title="${value}">${value}</div><div class="hidden group-hover:flex absolute top-1 right-1 bg-white shadow rounded px-1 text-[10px] text-gray-500">Use</div></td>`; }
-      function copyFromSource(sourceName) { if(!currentRecord || !currentRecord.sources[sourceName]) return; fields.forEach(f => { const val = currentRecord.sources[sourceName][f]; if (val && val !== "N/A") finalMergeState[f] = val; }); renderBody(); showToast(`Copied all data from ${sourceName}`, true); lastActionState = { id: currentRecord.normalizedId, recordRef: currentRecord, wasResolved: currentRecord.resolvedLocally, wasMaster: null }; }
-      function autoResolve() { fields.forEach(field => { const counts = {}; let maxVal = null; let maxCount = 0; sourceNames.forEach(src => { const val = currentRecord.sources[src.name]?.[field]; if (val && val !== "N/A" && val !== "") { const sVal = String(val); counts[sVal] = (counts[sVal] || 0) + 1; if (counts[sVal] > maxCount) { maxCount = counts[sVal]; maxVal = sVal; } } }); if (maxVal !== null) finalMergeState[field] = maxVal; }); renderBody(); showToast("Auto-resolved all fields!"); }
-      function resetMerge() { if (!currentRecord) return; delete currentRecord.manualMergeData; delete currentRecord.resolvedLocally; selectEmployee(currentRecord, true); filterList(); showToast("Reset to original state."); }
-      function markResolved() { if (!currentRecord) return; syncInputsToState(); currentRecord.resolvedLocally = true; currentRecord.manualMergeData = { ...finalMergeState }; updateLocalCache(); filterList(); showToast("Marked as resolved locally."); }
-      function saveAllResolved() { const recordsToSave = allData.filter(d => !d.masterRecord && d.resolvedLocally).map(d => d.manualMergeData); if (recordsToSave.length === 0) { showToast("No 'Resolved' records found to save. Please mark records as resolved first."); return; } const btn = document.getElementById('bulkSaveBtn'), origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = `<div class="loader w-4 h-4 border-white border-t-transparent"></div> Saving ${recordsToSave.length}...`; google.script.run.withSuccessHandler(res => { showToast(res.message); allData.forEach(d => { if (!d.masterRecord && d.resolvedLocally) { d.masterRecord = d.manualMergeData; delete d.resolvedLocally; delete d.manualMergeData; } }); updateLocalCache(); updateStats(); filterList(); btn.disabled = false; btn.innerHTML = origText; }).withFailureHandler(err => { alert("Error: " + err.message); btn.disabled = false; btn.innerHTML = origText; }).saveBulkToMaster(recordsToSave); }
-      function handleCellClick(field, value) { if (field === 'Active') { const upper = String(value).toUpperCase(); if (['YES', 'TRUE', 'ACTIVE'].includes(upper)) { finalMergeState['Date Resigned'] = ''; finalMergeState['Reason for Leaving'] = ''; } } if (currentRecord.masterRecord && finalMergeState[field] !== value) showConfirmation(() => { finalMergeState[field] = value; renderBody(); }); else { finalMergeState[field] = value; renderBody(); } }
-      function updateFinal(field, value) { const updateLogic = () => { finalMergeState[field] = value; if (highlightMissingMode) { const input = document.getElementById(`final-${field}`); if (input) { if (!value || String(value).trim() === '' || value === 'N/A') { input.style.cssText = 'background-color: #fee2e2 !important; border: 2px solid #ef4444 !important; color: #7f1d1d !important;'; } else { input.style.cssText = ''; } } } if (field === 'Active') { const upper = String(value).toUpperCase(); if (['YES', 'TRUE', 'ACTIVE'].includes(upper)) { finalMergeState['Date Resigned'] = ''; finalMergeState['Reason for Leaving'] = ''; const dr = document.getElementById('final-Date Resigned'); if(dr) dr.value = ''; const rl = document.getElementById('final-Reason for Leaving'); if(rl) rl.value = ''; } } }; if (currentRecord.masterRecord) { showConfirmation(() => { updateLogic(); }, () => { document.getElementById(`final-${field}`).value = finalMergeState[field]; }); } else { updateLogic(); } }
-      function showConfirmation(onYes, onNo = () => {}) { const modal = document.getElementById('customModal'); modal.classList.remove('hidden'); modal.classList.add('flex'); modalCallback = (confirmed) => { if (confirmed) onYes(); else onNo(); modal.classList.add('hidden'); modal.classList.remove('flex'); }; }
-      function closeModal(result) { if (modalCallback) modalCallback(result); }
-      function validateRecord(data) { const active = String(data['Active'] || '').toUpperCase(); if (['NO', 'FALSE', 'INACTIVE'].includes(active)) { if (!data['Date Resigned'] || data['Date Resigned'] === 'N/A') return "Inactive employees MUST have a Date Resigned."; if (!data['Reason for Leaving'] || data['Reason for Leaving'] === 'N/A') return "Inactive employees MUST have a Reason for Leaving."; } return null; }
-      function saveMerge() { syncInputsToState(); const error = validateRecord(finalMergeState); if (error) { alert(error); return; } lastActionState = { id: currentRecord.normalizedId, recordRef: currentRecord, wasResolved: currentRecord.resolvedLocally, wasMaster: null }; const btn = document.getElementById('saveBtn'); btn.disabled = true; btn.innerHTML = `<div class="loader w-4 h-4 border-white border-t-transparent"></div> Saving...`; google.script.run.withSuccessHandler(res => { if (currentRecord) { currentRecord.masterRecord = { ...finalMergeState }; delete currentRecord.resolvedLocally; delete currentRecord.manualMergeData; } updateLocalCache(); updateStats(); filterList(); document.getElementById('mergeInterface').classList.add('hidden'); document.getElementById('emptyState').classList.remove('hidden'); btn.disabled = false; btn.innerHTML = `<i class="ph ph-check-circle"></i> Save to Master Database`; showToast(res.message, true); }).withFailureHandler(err => { alert(err.message); btn.disabled = false; btn.innerHTML = `<i class="ph ph-check-circle"></i> Save to Master Database`; }).saveToMaster(finalMergeState); }
-      function undoLastAction() { if (!lastActionState) return; const { recordRef, wasResolved } = lastActionState; delete recordRef.masterRecord; if (wasResolved) recordRef.resolvedLocally = true; updateLocalCache(); updateStats(); filterList(); selectEmployee(recordRef); document.getElementById('toast').classList.add('translate-y-20', 'opacity-0'); alert("Undo Successful. Note: Data remains in Sheet until overwritten."); }
-      function detectGlobalConflict(item) { let conflict = false; fields.forEach(f => { const vals = new Set(); sourceNames.forEach(src => { const sName = src.name || src; if(item.sources[sName]?.[f]) vals.add(item.sources[sName][f]); }); if(vals.size > 1) conflict = true; }); return conflict; }
-      function showToast(msg, allowUndo = false) { const el = document.getElementById('toast'); document.getElementById('toastMsg').innerText = msg; const undoBtn = document.getElementById('toastUndoBtn'); if(allowUndo) undoBtn.classList.remove('hidden'); else undoBtn.classList.add('hidden'); el.classList.remove('translate-y-20', 'opacity-0'); setTimeout(() => { el.classList.add('translate-y-20', 'opacity-0'); }, 5000); }
-      function showError(err) { alert("Error: " + err.message); document.getElementById('loadingState').classList.add('hidden'); }
-      function toggleHighlight() { highlightMissingMode = document.getElementById('highlightMissingCheckbox').checked; if (currentRecord) renderBody(); }
     </script>
   </body>
 </html>
