@@ -19,6 +19,24 @@ const CONFIG = {
       { NAME: "HR FIELDS", DATA_START_ROW: 2, MAP: { "Employee ID": "B", "Active": "P", "Employment Type": "O", "Company Name": "C", "Division": "D", "Group": "E", "Department": "F", "Section": "G", "Work Location": "H", "Position": "AI", "Superior ID": "U", "Superior Name": "V", "Date Hired": "W", "Date Resigned": "Q", "Reason for Leaving": "S" } }
     ]
   },
+  // --- NEW: SHEET 4 (REFERENCE SOURCE) ---
+  SHEET_4: {
+    ID: "1UIwtAixLz0wd5lXQD6PvvYkv-pOkOggriMTF_BGdkQk", // <--- PUT YOUR SHEET 4 ID HERE
+    TABS: [{ 
+        NAME: "Reference Data", // <--- Check your tab name
+        DATA_START_ROW: 2, 
+        MAP: { 
+           "Employee ID": "B", // Adjust Columns as needed
+           "Position": "S", 
+           "Department": "Q", 
+           "Division": "O", 
+           "Group": "P", 
+           "Section": "R", 
+           "Superior Name": "V", 
+           "Superior ID": "U" 
+        } 
+    }]
+  },
   MASTER: { ID: "1Ll9L8D7rkze9vQVgFxs48besFwBiStz0eAIEUPrpTAY", TAB_NAME: "MasterDatabase", LOG_TAB: "Logs" }
 };
 
@@ -40,9 +58,15 @@ function getMasterHeaders() {
 
 function _fetchRawDataFromSources() {
   const fields = getMasterHeaders();
-  const sources = [{key:'SHEET_1',config:CONFIG.SHEET_1},{key:'SHEET_2',config:CONFIG.SHEET_2},{key:'SHEET_3',config:CONFIG.SHEET_3}];
+  // Added SHEET_4 with isReference flag
+  const sources = [
+      {key:'SHEET_1',config:CONFIG.SHEET_1},
+      {key:'SHEET_2',config:CONFIG.SHEET_2},
+      {key:'SHEET_3',config:CONFIG.SHEET_3},
+      {key:'SHEET_4',config:CONFIG.SHEET_4, isReference: true} 
+  ];
   let groupedData = {};
-  let detectedSourceNames = [];
+  let detectedSourceNames = []; 
 
   sources.forEach(sourceObj => {
     const sheetConfig = sourceObj.config;
@@ -53,7 +77,8 @@ function _fetchRawDataFromSources() {
       const fileUrl = ss.getUrl(); 
       
       if (!detectedSourceNames.some(s => s.name === fileName)) {
-         detectedSourceNames.push({ name: fileName, url: fileUrl });
+         // Pass reference flag to frontend
+         detectedSourceNames.push({ name: fileName, url: fileUrl, isReference: sourceObj.isReference || false });
       }
 
       sheetConfig.TABS.forEach(tabConfig => {
@@ -97,10 +122,7 @@ function _fetchRawDataFromSources() {
 
           let rawName = getVal("Full Name");
           if (!rawName) {
-            const last = getVal("Last Name");
-            const first = getVal("First Name");
-            const mid = getVal("Middle Name");
-            const suffix = getVal("Suffix");
+            const last = getVal("Last Name"), first = getVal("First Name"), mid = getVal("Middle Name"), suffix = getVal("Suffix");
             if (last || first) {
                  rawName = `${last}, ${first} ${mid} ${suffix}`.replace(/\s+/g, ' ').trim();
                  if (rawName.startsWith(",")) rawName = rawName.substring(1).trim();
@@ -164,7 +186,6 @@ function _fetchRawDataFromSources() {
           if (next.normalizedName[0] !== current.normalizedName[0]) break; 
           const dist = getLevenshteinDistance(current.normalizedName, next.normalizedName);
           if (dist <= 3 && current.key !== next.key) {
-              console.log(`Auto-Merging: ${current.normalizedName} with ${next.normalizedName}`);
               for (const [srcName, srcData] of Object.entries(next.sources)) {
                   if (!current.sources[srcName]) {
                       current.sources[srcName] = srcData;
@@ -209,8 +230,8 @@ function getLevenshteinDistance(s1, s2) {
 function getConsolidatedData(filters = {}) {
   const fields = getMasterHeaders();
   const cache = CacheService.getScriptCache();
-  const cacheKeyMeta = 'consolidated_data_v15_final'; 
-  const cacheKeyChunkPrefix = 'consolidated_data_v15_chunk_';
+  const cacheKeyMeta = 'consolidated_data_v17_ref'; // Version Bump
+  const cacheKeyChunkPrefix = 'consolidated_data_v17_chunk_';
   const CHUNK_SIZE = 90000; 
 
   let groupedData, detectedSourceNames;
@@ -308,7 +329,7 @@ function getConsolidatedData(filters = {}) {
 
 function getFilterOptions() {
   const cache = CacheService.getScriptCache();
-  const cacheKey = 'filter_options_v15_final';
+  const cacheKey = 'filter_options_v17_ref';
   const cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
@@ -397,7 +418,6 @@ function saveBulkToMaster(records) {
        const rowData = fields.map(f => record[f] || "");
        if (idMap.has(id)) { data[idMap.get(id)] = rowData; updated++; }
        else { newRows.push(rowData); added++; }
-       
        const logMsg = `Action: ${idMap.has(id) ? 'UPDATE' : 'CREATE'} - ${record[fields[1]]}`;
        logChange(ss, idMap.has(id) ? "UPDATE" : "CREATE", id, logMsg);
     });
@@ -406,7 +426,7 @@ function saveBulkToMaster(records) {
     if (newRows.length > 0) sheet.getRange(data.length + 1, 1, newRows.length, newRows[0].length).setValues(newRows);
     
     const cache = CacheService.getScriptCache();
-    const keys = ['consolidated_data_v15_final', 'filter_options_v15_final'];
+    const keys = ['consolidated_data_v17_ref', 'filter_options_v17_ref'];
     cache.removeAll(keys);
     return { success: true, message: `Bulk Saved: ${updated} Updated, ${added} Added.` };
   } catch (e) { return { success: false, message: e.toString() }; } finally { lock.releaseLock(); }
@@ -425,27 +445,21 @@ function logChange(ss, action, id, details) {
   } catch(e) { console.error("Logging failed", e); }
 }
 
-// --- NEW: FETCH LOGS FOR FRONTEND ---
 function getEmployeeLogs(employeeId) {
   try {
       const masterId = cleanId(CONFIG.MASTER.ID);
       const ss = SpreadsheetApp.openById(masterId);
       const sheet = ss.getSheetByName(CONFIG.MASTER.LOG_TAB);
       if (!sheet) return [];
-      
       const data = sheet.getDataRange().getValues();
-      // Assuming: [Timestamp, User, Action, Employee ID, Details]
       const logs = data.slice(1).filter(row => String(row[3]) === String(employeeId)).map(row => ({
-          timestamp: row[0],
-          user: row[1],
-          action: row[2],
-          details: row[4]
+           timestamp: row[0] instanceof Date ? row[0].toLocaleString() : String(row[0]),
+           user: row[1],
+           action: row[2],
+           details: row[4]
       }));
-      // Sort newest first
-      return logs.reverse();
-  } catch(e) {
-      return [];
-  }
+      return logs.reverse(); 
+  } catch(e) { return []; }
 }
 
 function letterToColumn(letter) {
